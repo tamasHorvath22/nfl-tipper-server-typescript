@@ -1,0 +1,53 @@
+{
+  "name": "nfl-tipper-server-typescript",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "nodemon ./src/index.ts"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tamasHorvath22/nfl-tipper-server-typescript.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/tamasHorvath22/nfl-tipper-server-typescript/issues"
+  },
+  "homepage": "https://github.com/tamasHorvath22/nfl-tipper-server-typescript#readme",
+  "devDependencies": {
+    "@types/express": "^4.17.13",
+    "@types/jsonwebtoken": "^8.5.5",
+    "@types/node": "^16.7.4",
+    "ts-node": "^10.2.1",
+    "typescript": "^4.3.5"
+  },
+  "dependencies": {
+    "@types/bcryptjs": "^2.4.2",
+    "@types/body-parser": "^1.19.1",
+    "@types/cors": "^2.8.12",
+    "@types/crypto-js": "^4.0.2",
+    "@types/mailgun-js": "^0.22.12",
+    "@types/mongoose": "^5.11.97",
+    "bcrypt": "^5.0.1",
+    "bcryptjs": "^2.4.3",
+    "body-parser": "^1.19.0",
+    "class-transformer": "^0.4.0",
+    "class-validator": "^0.13.1",
+    "cors": "^2.8.5",
+    "crypto-js": "^4.1.1",
+    "dotenv": "^10.0.0",
+    "express": "^4.17.1",
+    "fs": "0.0.1-security",
+    "js": "^0.1.0",
+    "jsonwebtoken": "^8.5.1",
+    "mailgun-js": "^0.22.0",
+    "mongoose": "^6.0.2",
+    "mongoose-transactions": "^1.1.4",
+    "mongoose-transactions-typescript": "^1.1.4",
+    "reflect-metadata": "^0.1.13",
+    "routing-controllers": "^0.9.0",
+    "typedi": "^0.10.0"
+  }
+}
