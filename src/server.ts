@@ -11,7 +11,8 @@ export const app: Application = createExpressServer({
   ]
 });
 
-app.use(cors());
+app.use('/api', jwtTokenMiddleware);
 app.use(bodyParser.json());
 
-app.use('/api', jwtTokenMiddleware);
+// TODO ???
+// app.use(cors());

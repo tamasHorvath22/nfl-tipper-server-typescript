@@ -1,11 +1,13 @@
-export interface UserDocument {
+import { BaseDocument } from "./base.document";
+
+export interface UserDocument extends BaseDocument {
   username: string;
   password: string;
   email: string;
   avatarUrl: string;
   isEmailConfirmed: boolean;
   isAdmin: boolean;
-  leagues: string[];
-  invitations: string[];
+  leagues: [];
+  invitations: [];
   validatePassword(password: string): boolean;
 }

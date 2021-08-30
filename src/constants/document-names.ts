@@ -9,5 +9,6 @@ export enum DocumentName {
   BET = 'Bet',
   WEEK_TRACKER = 'WeekTracker',
   BACKUP = 'Backup',
-  TEAM_STANDINGS = 'TeamStandings'
+  TEAM_STANDINGS = 'TeamStandings',
+  ADD_NEW_PASSWORD = 'AddNewPasword'
 }
