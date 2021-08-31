@@ -1,3 +1,4 @@
+import { UserLeagues } from '../documents/user.document';
 export interface UserDTO {
   _id: string;
   username: string;
@@ -5,6 +6,6 @@ export interface UserDTO {
   avatarUrl: string;
   isEmailConfirmed: boolean;
   isAdmin: boolean;
-  leagues: [];
+  leagues: UserLeagues[];
   invitations: [];
 }

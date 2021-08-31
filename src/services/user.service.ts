@@ -1,3 +1,4 @@
+import { LeagueRepositoryService } from './../repositories/league.repository';
 import { UserRepositoryService } from './../repositories/user.repository';
 import { UserDocument } from './../documents/user.document';
 import { RegisterDTO } from './../types/register-dto';
@@ -26,6 +27,7 @@ export class UserService {
 
   constructor(
     private userRepositoryService: UserRepositoryService,
+    private leagueRepositoryService: LeagueRepositoryService,
     private mailService: MailService
   ) {}
 
@@ -211,6 +213,31 @@ export class UserService {
     return this.mapToUserDto(user);
   }
 
+  public async changeUserData(token: string, avatarUrl: string): Promise<ApiResponseMessage | UserDTO> {
+    const decodedToken: TokenUser = jwtDecode(token);
+    const user = await this.userRepositoryService.getUserById(decodedToken.userId);
+    if (!user) {
+      return ApiResponseMessage.NOT_FOUND;
+    }
+    
+    user.avatarUrl = avatarUrl;
+    let leagues;
+    if (user.leagues.length) {
+      leagues = await this.leagueRepositoryService.getLeaguesByIds(user.leagues.map(league => league.leagueId));
+      if (!leagues) {
+        return ApiResponseMessage.LEAGUES_NOT_FOUND;
+      }
+      for (const league of leagues) {
+        league.players.find(player => user._id.toString() === player.id).avatar = user.avatarUrl;
+      }
+    }
+    const result = await this.leagueRepositoryService.changeUserData(user, leagues);
+    if (!result) {
+      return ApiResponseMessage.MODIFY_FAIL;
+    }
+    return this.mapToUserDto(result);
+  }
+
   private decryptPassword(hash: string): string {
     const bytes = CryptoJS.AES.decrypt(hash, ConfigService.getEnvValue('PASSWORD_SECRET_KEY'));
     return bytes.toString(CryptoJS.enc.Utf8);
@@ -219,7 +246,7 @@ export class UserService {
   private mapUserToToken(user: UserDocument): TokenUser {
     return {
       username: user.username,
-      userId: user._id,
+      userId: user._id.toString(),
       userEmail: user.email,
       isAdmin: user.isAdmin
     }
@@ -227,7 +254,7 @@ export class UserService {
 
   private mapToUserDto(user: UserDocument): UserDTO {
     return {
-      _id: user._id,
+      _id: user._id.toString(),
       username: user.username,
       email: user.email,
       avatarUrl: user.avatarUrl,

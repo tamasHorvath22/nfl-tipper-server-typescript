@@ -7,7 +7,12 @@ export interface UserDocument extends BaseDocument {
   avatarUrl: string;
   isEmailConfirmed: boolean;
   isAdmin: boolean;
-  leagues: [];
+  leagues: UserLeagues[];
   invitations: [];
   validatePassword(password: string): boolean;
+}
+
+export interface UserLeagues {
+  leagueId: string;
+  name: string
 }

@@ -57,6 +57,14 @@ export class Usercontroller {
     return await this.userService.getUser(this.getToken(authorization));
   }
 
+  @Post('/api/user/change')
+  public async changeUserData(
+    @HeaderParam('authorization') authorization: string,
+    @Body() body: { avatarUrl: string }
+  ): Promise<UserDTO | ApiResponseMessage> {
+    return await this.userService.changeUserData(this.getToken(authorization), body.avatarUrl);
+  }
+
   private getToken(authorization: string): string {
     return authorization.slice(7);
   }
