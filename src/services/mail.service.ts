@@ -6,7 +6,6 @@ import { RegisterMail } from '../types/register-mail';
 import { MailType } from '../constants/mail-types';
 import { MailTemplateService } from './mail-template.service';
 
-
 @Service()
 export class MailService {
 
@@ -25,7 +24,7 @@ export class MailService {
       from: this.mailTemplateService.getSender(),
       to: userData.$emailAddress,
       subject: this.mailTemplateService.getSubject(mailType),
-      html: this.mailTemplateService.getTemplatewithUserData(userData, mailType)
+      html: this.mailTemplateService.getTemplateWithUserData(userData, mailType)
     }
   
     try {
@@ -36,5 +35,4 @@ export class MailService {
     }
   }
 
-  
 }

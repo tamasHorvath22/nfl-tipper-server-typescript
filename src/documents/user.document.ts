@@ -8,11 +8,16 @@ export interface UserDocument extends BaseDocument {
   isEmailConfirmed: boolean;
   isAdmin: boolean;
   leagues: UserLeagues[];
-  invitations: [];
+  invitations: UserInvitation[];
   validatePassword(password: string): boolean;
 }
 
 export interface UserLeagues {
   leagueId: string;
   name: string
+}
+
+export interface UserInvitation {
+  leagueId: string;
+  name: string;
 }

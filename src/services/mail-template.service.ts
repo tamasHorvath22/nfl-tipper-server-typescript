@@ -15,40 +15,12 @@ export class MailTemplateService {
     return this.CREDENTIALS.SENDER;
   }
 
-  public getTemplate(type: MailType): { path: string, subject: string } {
-    if (type === MailType.EMAIL_CONFIRM ) {
-      return {
-        path: `${this.BASE_TEMPLATE_PATH}confirm-email-template.html`,
-        subject: 'Welcome to NFL tipper!'
-      };
-    } else if (type === MailType.FORGOT_PASSWORD) {
-      return {
-        path: `${this.BASE_TEMPLATE_PATH}forgot-password-template.html`,
-        subject: 'Reset yout password'
-      };
-    } else if (type === MailType.LEAGUE_INVITE) {
-      return {
-        path: `${this.BASE_TEMPLATE_PATH}league-invitation-template.html`,
-        subject: 'League invitation'
-      };
-    } else if (type === MailType.REGISTRATION) {
-      return {
-        path: `${this.BASE_TEMPLATE_PATH}registration-mail-template.html`,
-        subject: 'Welcome to NFL tipper!'
-      };
-    }
-    return {
-      path: '',
-      subject: ''
-    };
-  }
-
-  public getTemplatewithUserData(userData: RegisterMail, type: MailType): string {
+  public getTemplateWithUserData(userData: RegisterMail, type: MailType): string {
     const templatePath = this.getTemplatePath(type);
     if (!templatePath) {
       return '';
     }
-    let onelinerTemplate = this.getTempalteAsOneLiner(templatePath);
+    let onelinerTemplate = this.getTemplateAsOneLiner(templatePath);
     const keys = Object.keys(userData);
     keys.forEach(key => {
       while (onelinerTemplate.includes(key)) {
@@ -62,7 +34,7 @@ export class MailTemplateService {
     if (type === MailType.EMAIL_CONFIRM ) {
       return 'Welcome to NFL tipper!';
     } else if (type === MailType.FORGOT_PASSWORD) {
-      return 'Reset yout password';
+      return 'Reset your password';
     } else if (type === MailType.LEAGUE_INVITE) {
       return 'League invitation';
     } else if (type === MailType.REGISTRATION) {
@@ -86,7 +58,7 @@ export class MailTemplateService {
     }
   }
 
-  private getTempalteAsOneLiner(templatePath: string) {
+  private getTemplateAsOneLiner(templatePath: string) {
     const fileUrl = new URL(this.getBasePath(templatePath));
     const rawFile = fs.readFileSync(fileUrl, 'utf8').toString();
     let result = rawFile.replace(/(\r\n|\n|\r)/gm, ""); //removes break lines

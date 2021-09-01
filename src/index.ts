@@ -1,7 +1,7 @@
 import 'reflect-metadata';
 import { ConfigService } from './services/config.service';
 import { app } from './server';
-import { Schema, model, connect } from 'mongoose';
+import { connect } from 'mongoose';
 import { useContainer } from 'routing-controllers';
 import Container from 'typedi';
 const PORT = process.env.PORT || 8080;

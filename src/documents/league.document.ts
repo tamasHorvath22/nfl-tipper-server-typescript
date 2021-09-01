@@ -11,12 +11,6 @@ export interface LeagueDocument extends BaseDocument {
   leagueAvatarUrl: string;
 }
 
-export interface LeaguePlayer {
-  id: string;
-  name: string;
-  avatar: string;
-}
-
 export interface SeasonDocument extends BaseDocument {
   year: number;
   numberOfSeason: number;
@@ -24,6 +18,7 @@ export interface SeasonDocument extends BaseDocument {
   isOpen: boolean;
   weeks: WeekDocument[];
   standings: PlayerStanding[];
+  finalWinner: Record<string, string>
 }
 
 export interface WeekDocument extends BaseDocument {

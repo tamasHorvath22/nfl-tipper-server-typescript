@@ -8,7 +8,8 @@ const emailConfirmSchema = new Schema<SeasonDocument>({
   numberOfSuperBowl: Number,
   isOpen: Boolean,
   weeks: [],
-  standings: []
+  standings: [],
+  finalWinner: {}
 }, { timestamps: true });
 
 export default mongoose.model<SeasonDocument>(DocumentName.SEASON, emailConfirmSchema);

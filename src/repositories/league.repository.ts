@@ -1,11 +1,11 @@
-import { ApiResponseMessage } from './../constants/api-response-message';
-import { LeagueDocument } from './../documents/league.document';
+import { LeagueDocument } from '../documents/league.document';
 import { Service } from "typedi";
 import mongoose from 'mongoose';
-import leagueModel from '../mongoose-models/league.model';
+import LeagueModel from '../mongoose-models/league.model';
 import { UserDocument } from "../documents/user.document";
 import Transaction from 'mongoose-transactions-typescript';
 import { DocumentName } from '../constants/document-names';
+import { LeagueDataDto } from "../types/league-data.dto";
 
 @Service()
 export class LeagueRepositoryService {
@@ -15,14 +15,9 @@ export class LeagueRepositoryService {
       return new mongoose.Types.ObjectId(league);
     });
     try {
-      const allLeagues = [];
-      for (const id of mongooseIdArray) {
-        const league = await leagueModel.findById(id);
-        allLeagues.push(league);
-      }
-      // TODO
-      // const leagues = await leagueModel.find({ _id: { $in: mongooseIdArray } });
-      return allLeagues.length ? allLeagues : null;
+      // @ts-ignore
+      const leagues = await LeagueModel.find({ _id: { $in: mongooseIdArray } });
+      return leagues.length ? leagues : null;
     } catch(err) {
       console.error(err);
       return null;
@@ -49,5 +44,48 @@ export class LeagueRepositoryService {
       return null;
     };
   }
-  
+
+  public async saveLeagueAndUser(user: UserDocument, league: LeagueDocument) {
+    const transaction = new Transaction(true);
+    league.markModified('seasons')
+    transaction.insert(DocumentName.LEAGUE, league);
+    transaction.insert(DocumentName.USER, user);
+
+    try {
+      await transaction.run();
+      return true;
+    } catch (err)  {
+      transaction.rollback();
+      console.error(err);
+      return false;
+    }
+  }
+
+  public async getLeagueById(id: string) {
+    try {
+      const league = await LeagueModel.findById(id).exec();
+      return league ? league : null;
+    } catch(err) {
+      console.error(err);
+      return null;
+    }
+  }
+
+  public async getLeaguesData(idList: string[]): Promise<LeagueDataDto[]> {
+    try {
+      const leagues = await this.getLeaguesByIds(idList);
+      if (!leagues) {
+        return null;
+      }
+      return leagues.map(league => {
+        return { id: league._id.toString(), name: league.name, avatar: league.leagueAvatarUrl }
+      });
+    } catch(err) {
+      console.error(err);
+      return null;
+    }
+  }
+
+
+
 }

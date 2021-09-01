@@ -1,7 +1,7 @@
-import { LeagueRepositoryService } from './../repositories/league.repository';
-import { UserRepositoryService } from './../repositories/user.repository';
-import { UserDocument } from './../documents/user.document';
-import { RegisterDTO } from './../types/register-dto';
+import { LeagueRepositoryService } from '../repositories/league.repository';
+import { UserRepositoryService } from '../repositories/user.repository';
+import { UserDocument } from '../documents/user.document';
+import { RegisterDTO } from '../types/register-dto';
 import { Service } from "typedi";
 import { ApiResponseMessage } from '../constants/api-response-message';
 import UserModel from '../mongoose-models/user.model';
@@ -16,10 +16,10 @@ import * as jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import ForgotPasswordModel from '../mongoose-models/forgot-password.model';
 import { NewPasswordDTO } from '../types/new-password-dto';
-import jwtDecode from 'jwt-decode';
 import { TokenUser } from '../types/token-user';
 import { ChangePasswordDTO } from '../types/change-password.dto';
 import { UserDTO } from '../types/user-dto';
+import { Utils } from "../utils";
 
 
 @Service()
@@ -71,35 +71,23 @@ export class UserService {
   public async login(loginDTO: LoginDTO): Promise<ApiResponseMessage | { token: string }> {
     const user = await this.userRepositoryService.getUserByUsername(loginDTO.username);
     if (!user) {
-      return ApiResponseMessage.WRONG_USERNAME_OR_PASSWORD;
-    }
-    if (!user) {
       return ApiResponseMessage.DATABASE_ERROR;
-    } else {
-      user === user as UserDocument;
     }
-  
     if (!user.isEmailConfirmed) {
       return ApiResponseMessage.EMAIL_NOT_CONFIRMED;
     }
-    let authenticated;
     try {
       // TODO password hash
       // authenticated = await bcrypt.compare(this.decryptPassword(loginDTO.password), user.password);
-      authenticated = await bcrypt.compare(loginDTO.password, user.password);
+      const authenticated = await bcrypt.compare(loginDTO.password, user.password);
+      if (authenticated) {
+        return { token: jwt.sign(this.mapUserToToken(user), ConfigService.getEnvValue('JWT_PRIVATE_KEY')) };
+      } else {
+        return ApiResponseMessage.WRONG_USERNAME_OR_PASSWORD;
+      }
     } catch (err) {
       console.error(err);
       return ApiResponseMessage.AUTHENTICATION_ERROR;
-    }
-    if (authenticated) {
-      try {
-        return { token: jwt.sign(this.mapUserToToken(user), ConfigService.getEnvValue('JWT_PRIVATE_KEY')) };
-      } catch (err) {
-        console.error(err);
-        return ApiResponseMessage.TOKEN_CREATE_ERROR;
-      }
-    } else {
-      return ApiResponseMessage.WRONG_USERNAME_OR_PASSWORD;
     }
   }
 
@@ -161,61 +149,53 @@ export class UserService {
     if (!user) {
       return ApiResponseMessage.NOT_FOUND;
     }
-    
     user.isEmailConfirmed = true;
     const result = await this.userRepositoryService.confirmEmail(user, emailConfirm);
     return result ? ApiResponseMessage.EMAIL_CONFIRMED : ApiResponseMessage.EMAIL_CONFIRM_FAIL;
   }
 
-  public async changePassword(token: string, passwords: ChangePasswordDTO) {
-    const decodedToken: TokenUser = jwtDecode(token);
-    const user = await this.userRepositoryService.getUserByUsername(decodedToken.username);
+  public async changePassword(tokenUser: TokenUser, passwords: ChangePasswordDTO) {
+    const user = await this.userRepositoryService.getUserByUsername(tokenUser.username);
     if (!user) {
       return ApiResponseMessage.NOT_FOUND;
     }
-    let authenticated;
     try {
-      authenticated = await bcrypt.compare(
+      const authenticated = await bcrypt.compare(
         passwords.oldPassword,
         // TODO
         // this.decryptPassword(passwords.oldPassword),
         user.password
       );
+      if (authenticated) {
+        // TODO
+        // user.password = this.decryptPassword(passwords.newPassword)
+        user.password = passwords.newPassword;
+        const userSaveResult = await this.userRepositoryService.changePassword(user);
+        if (userSaveResult) {
+          return { token: jwt.sign(this.mapUserToToken(user), ConfigService.getEnvValue('JWT_PRIVATE_KEY')) };
+        } else {
+          return ApiResponseMessage.TOKEN_CREATE_ERROR;
+        }
+      } else {
+        return ApiResponseMessage.WRONG_USERNAME_OR_PASSWORD;
+      }
     } catch (err) {
       console.error(err);
       return ApiResponseMessage.AUTHENTICATION_ERROR;
     }
-    if (authenticated) {
-      // TODO
-      // user.password = this.decryptPassword(passwords.newPassword)
-      user.password = passwords.newPassword;
-      const userSaveResult = await this.userRepositoryService.changePassword(user);
-      if (userSaveResult) {
-        try {
-          return { token: jwt.sign(this.mapUserToToken(user), ConfigService.getEnvValue('JWT_PRIVATE_KEY')) };
-        } catch (err) {
-          console.error(err);
-          return ApiResponseMessage.TOKEN_CREATE_ERROR;
-        }
-      }
-      return ApiResponseMessage.RESET_PASSWORD_FAIL;
-    } else {
-      return ApiResponseMessage.WRONG_USERNAME_OR_PASSWORD;
-    }
   }
 
-  public async getUser(token: string): Promise<UserDTO | ApiResponseMessage> {
-    const decodedToken: TokenUser = jwtDecode(token);
-    const user = await this.userRepositoryService.getUserByUsername(decodedToken.username);
+  public async getUser(tokenUser: TokenUser): Promise<UserDTO | ApiResponseMessage> {
+    // TODO remove this, on frontend too
+    const user = await this.userRepositoryService.getUserByUsername(tokenUser.username);
     if (!user) {
       return ApiResponseMessage.NOT_FOUND;
     }
-    return this.mapToUserDto(user);
+    return Utils.mapToUserDto(user);
   }
 
-  public async changeUserData(token: string, avatarUrl: string): Promise<ApiResponseMessage | UserDTO> {
-    const decodedToken: TokenUser = jwtDecode(token);
-    const user = await this.userRepositoryService.getUserById(decodedToken.userId);
+  public async changeUserData(tokenUser: TokenUser, avatarUrl: string): Promise<ApiResponseMessage | UserDTO> {
+    const user = await this.userRepositoryService.getUserById(tokenUser.userId);
     if (!user) {
       return ApiResponseMessage.NOT_FOUND;
     }
@@ -235,7 +215,7 @@ export class UserService {
     if (!result) {
       return ApiResponseMessage.MODIFY_FAIL;
     }
-    return this.mapToUserDto(result);
+    return Utils.mapToUserDto(result);
   }
 
   private decryptPassword(hash: string): string {
@@ -249,19 +229,6 @@ export class UserService {
       userId: user._id.toString(),
       userEmail: user.email,
       isAdmin: user.isAdmin
-    }
-  }
-
-  private mapToUserDto(user: UserDocument): UserDTO {
-    return {
-      _id: user._id.toString(),
-      username: user.username,
-      email: user.email,
-      avatarUrl: user.avatarUrl,
-      isEmailConfirmed: user.isEmailConfirmed,
-      isAdmin: user.isAdmin,
-      leagues: user.leagues,
-      invitations: user.invitations
     }
   }
   

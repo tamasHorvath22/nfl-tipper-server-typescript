@@ -1,6 +1,6 @@
-import { DocumentName } from './../constants/document-names';
-import { UserDocument } from './../documents/user.document';
-import { EmailConfirmDocument } from './../documents/email-confirm.document';
+import { DocumentName } from '../constants/document-names';
+import { UserDocument } from '../documents/user.document';
+import { EmailConfirmDocument } from '../documents/email-confirm.document';
 import { Service } from "typedi";
 import { ApiResponseMessage } from '../constants/api-response-message';
 import Transaction from 'mongoose-transactions-typescript';

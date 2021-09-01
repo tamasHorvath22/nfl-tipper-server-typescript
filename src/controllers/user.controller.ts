@@ -1,16 +1,17 @@
-import { ChangePasswordDTO } from './../types/change-password.dto';
-import { LoginDTO } from './../types/login-dto';
-import { UserService } from './../services/user.service';
+import { ChangePasswordDTO } from '../types/change-password.dto';
+import { LoginDTO } from '../types/login-dto';
+import { UserService } from '../services/user.service';
 import { Body, Get, HeaderParam, JsonController, Param, Post } from "routing-controllers";
 import { Service } from 'typedi';
 import { RegisterDTO } from '../types/register-dto';
 import { NewPasswordDTO } from '../types/new-password-dto';
 import { ApiResponseMessage } from '../constants/api-response-message';
 import { UserDTO } from '../types/user-dto';
+import { Utils } from "../utils";
 
 @JsonController()
 @Service()
-export class Usercontroller {
+export class UserController {
 
   constructor(private userService: UserService) {}
 
@@ -49,12 +50,12 @@ export class Usercontroller {
     @Body() body: ChangePasswordDTO,
     @HeaderParam('authorization') authorization: string
   ): Promise<ApiResponseMessage | { token: string }> {
-    return await this.userService.changePassword(this.getToken(authorization), body);
+    return await this.userService.changePassword(Utils.getUserFromToken(authorization), body);
   }
 
   @Post('/api/get-user')
   public async getUser(@HeaderParam('authorization') authorization: string): Promise<UserDTO | ApiResponseMessage> {
-    return await this.userService.getUser(this.getToken(authorization));
+    return await this.userService.getUser(Utils.getUserFromToken(authorization));
   }
 
   @Post('/api/user/change')
@@ -62,10 +63,6 @@ export class Usercontroller {
     @HeaderParam('authorization') authorization: string,
     @Body() body: { avatarUrl: string }
   ): Promise<UserDTO | ApiResponseMessage> {
-    return await this.userService.changeUserData(this.getToken(authorization), body.avatarUrl);
-  }
-
-  private getToken(authorization: string): string {
-    return authorization.slice(7);
+    return await this.userService.changeUserData(Utils.getUserFromToken(authorization), body.avatarUrl);
   }
 }
