@@ -1,6 +1,5 @@
 import { LeagueRepositoryService } from '../repositories/league.repository';
 import { UserRepositoryService } from '../repositories/user.repository';
-import { UserDocument } from '../documents/user.document';
 import { RegisterDTO } from '../types/register-dto';
 import { Service } from "typedi";
 import { ApiResponseMessage } from '../constants/api-response-message';
@@ -16,7 +15,6 @@ import * as jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import ForgotPasswordModel from '../mongoose-models/forgot-password.model';
 import { NewPasswordDTO } from '../types/new-password-dto';
-import { TokenUser } from '../types/token-user';
 import { ChangePasswordDTO } from '../types/change-password.dto';
 import { UserDTO } from '../types/user-dto';
 import { Utils } from "../utils";
@@ -38,7 +36,7 @@ export class UserService {
     const user = new UserModel({
       username: registerDto.username,
       // TODO password hash
-      password: registerDto.password, // this.decryptPassword(registerDto.password),
+      password: this.decryptPassword(registerDto.password),
       email: registerDto.email,
       leagues: [],
       invitations: [],
@@ -49,7 +47,7 @@ export class UserService {
 
     const emailConfirm = new EmailConfirmModel({
       email: registerDto.email,
-      userId: user._id
+      userId: user._id.toString()
     })
 
     const userSaveResponse = await this.userRepositoryService.saveUser(user, emailConfirm);
@@ -60,7 +58,7 @@ export class UserService {
     const userEmailData: RegisterMail = {
       $emailAddress: user.email,
       $username: user.username,
-      $url: `${ConfigService.getConfirmEmailUrl}/${emailConfirm._id}`
+      $url: `${ConfigService.getConfirmEmailUrl}/${emailConfirm._id.toString()}`
     }
 
     await this.mailService.send(userEmailData, MailType.REGISTRATION);
@@ -78,10 +76,10 @@ export class UserService {
     }
     try {
       // TODO password hash
-      // authenticated = await bcrypt.compare(this.decryptPassword(loginDTO.password), user.password);
-      const authenticated = await bcrypt.compare(loginDTO.password, user.password);
+      const authenticated = await bcrypt.compare(this.decryptPassword(loginDTO.password), user.password);
+      // const authenticated = await bcrypt.compare(loginDTO.password, user.password);
       if (authenticated) {
-        return { token: jwt.sign(this.mapUserToToken(user), ConfigService.getEnvValue('JWT_PRIVATE_KEY')) };
+        return Utils.signToken(user);
       } else {
         return ApiResponseMessage.WRONG_USERNAME_OR_PASSWORD;
       }
@@ -104,7 +102,7 @@ export class UserService {
       const userEmailData = {
         $emailAddress: email,
         $username: user.username,
-        $url: `${process.env.UI_BASE_URL}${process.env.RESET_PASSWORD_URL}/${forgotPassword._id}`
+        $url: `${process.env.UI_BASE_URL}${process.env.RESET_PASSWORD_URL}/${forgotPassword._id.toString()}`
       }
       await this.mailService.send(userEmailData, MailType.FORGOT_PASSWORD);
       return ApiResponseMessage.RESET_PASSWORD_EMAIL_SENT;
@@ -127,8 +125,8 @@ export class UserService {
     }
   
     // TODO
-    // user.password = this.decryptPassword(data.password);
-    user.password = newPasswordDTO.password;
+    user.password = this.decryptPassword(newPasswordDTO.password);
+    // user.password = newPasswordDTO.password;
     return await this.userRepositoryService.createNewPassword(user, forgotPassword);
   }
   
@@ -154,25 +152,25 @@ export class UserService {
     return result ? ApiResponseMessage.EMAIL_CONFIRMED : ApiResponseMessage.EMAIL_CONFIRM_FAIL;
   }
 
-  public async changePassword(tokenUser: TokenUser, passwords: ChangePasswordDTO) {
+  public async changePassword(tokenUser: UserDTO, passwords: ChangePasswordDTO) {
     const user = await this.userRepositoryService.getUserByUsername(tokenUser.username);
     if (!user) {
       return ApiResponseMessage.NOT_FOUND;
     }
     try {
       const authenticated = await bcrypt.compare(
-        passwords.oldPassword,
+        // passwords.oldPassword,
         // TODO
-        // this.decryptPassword(passwords.oldPassword),
+        this.decryptPassword(passwords.oldPassword),
         user.password
       );
       if (authenticated) {
         // TODO
-        // user.password = this.decryptPassword(passwords.newPassword)
-        user.password = passwords.newPassword;
+        user.password = this.decryptPassword(passwords.newPassword)
+        // user.password = passwords.newPassword;
         const userSaveResult = await this.userRepositoryService.changePassword(user);
         if (userSaveResult) {
-          return { token: jwt.sign(this.mapUserToToken(user), ConfigService.getEnvValue('JWT_PRIVATE_KEY')) };
+          return { token: jwt.sign(Utils.mapToUserDto(user), ConfigService.getEnvValue('JWT_PRIVATE_KEY')) };
         } else {
           return ApiResponseMessage.TOKEN_CREATE_ERROR;
         }
@@ -185,17 +183,8 @@ export class UserService {
     }
   }
 
-  public async getUser(tokenUser: TokenUser): Promise<UserDTO | ApiResponseMessage> {
-    // TODO remove this, on frontend too
-    const user = await this.userRepositoryService.getUserByUsername(tokenUser.username);
-    if (!user) {
-      return ApiResponseMessage.NOT_FOUND;
-    }
-    return Utils.mapToUserDto(user);
-  }
-
-  public async changeUserData(tokenUser: TokenUser, avatarUrl: string): Promise<ApiResponseMessage | UserDTO> {
-    const user = await this.userRepositoryService.getUserById(tokenUser.userId);
+  public async changeUserData(tokenUser: UserDTO, avatarUrl: string): Promise<ApiResponseMessage | { token: string }> {
+    const user = await this.userRepositoryService.getUserById(tokenUser.id);
     if (!user) {
       return ApiResponseMessage.NOT_FOUND;
     }
@@ -215,7 +204,7 @@ export class UserService {
     if (!result) {
       return ApiResponseMessage.MODIFY_FAIL;
     }
-    return Utils.mapToUserDto(result);
+    return Utils.signToken(result);
   }
 
   private decryptPassword(hash: string): string {
@@ -223,13 +212,4 @@ export class UserService {
     return bytes.toString(CryptoJS.enc.Utf8);
   }
 
-  private mapUserToToken(user: UserDocument): TokenUser {
-    return {
-      username: user.username,
-      userId: user._id.toString(),
-      userEmail: user.email,
-      isAdmin: user.isAdmin
-    }
-  }
-  
 }

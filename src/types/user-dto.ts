@@ -1,11 +1,11 @@
-import {UserInvitation, UserLeagues} from '../documents/user.document';
+import {UserInvitation} from '../documents/user.document';
 export interface UserDTO {
-  _id: string;
+  id: string;
   username: string;
   email: string;
   avatarUrl: string;
   isEmailConfirmed: boolean;
   isAdmin: boolean;
-  leagues: UserLeagues[];
+  leagues: string[];
   invitations: UserInvitation[];
 }

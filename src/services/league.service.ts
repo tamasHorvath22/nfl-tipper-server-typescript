@@ -1,6 +1,5 @@
 import { Service } from "typedi";
 import { ApiResponseMessage } from '../constants/api-response-message';
-import { TokenUser } from "../types/token-user";
 import { CreateLeagueDTO } from "../types/create-league.dto";
 import { UserRepositoryService } from "../repositories/user.repository";
 import { WeekTrackerRepository } from "../repositories/week-tracker.repository";
@@ -14,11 +13,12 @@ import { WeekTrackerDocument } from "../documents/week-tracker.document";
 import WeekModel from '../mongoose-models/week.model';
 import GameModel from '../mongoose-models/game.model';
 import { WeekType } from "../constants/week-type";
-import {GameStatus} from "../constants/game-status";
-import {Utils} from "../utils";
-import {UserDTO} from "../types/user-dto";
-import {SendInvitationDto} from "../types/send-invitation.dto";
-import {LeagueDataDto} from "../types/league-data.dto";
+import { GameStatus } from "../constants/game-status";
+import { Utils } from "../utils";
+import { SendInvitationDto } from "../types/send-invitation.dto";
+import { LeagueDataDto } from "../types/league-data.dto";
+import { LeagueDto } from "../types/league.dto";
+import { UserDTO } from "../types/user-dto";
 
 @Service()
 export class LeagueService {
@@ -31,36 +31,36 @@ export class LeagueService {
 	) {}
 
 	public async createLeague(
-		tokenUser: TokenUser,
+		tokenUser: UserDTO,
 		leagueData: CreateLeagueDTO
-	): Promise<UserDTO | ApiResponseMessage>{
+	): Promise<{ token: string } | ApiResponseMessage>{
 		if (!leagueData?.name) {
 			return ApiResponseMessage.DATABASE_ERROR;
 		}
-		const user = await this.userRepositoryService.getUserById(tokenUser.userId);
+		const user = await this.userRepositoryService.getUserById(tokenUser.id);
 		const weekTracker = await this.weekTrackerRepository.getTracker();
 		if (!user || !weekTracker) {
 			return ApiResponseMessage.NOT_FOUND;
 		}
 
 		const league = this.createLeagueDocument(user, leagueData, weekTracker.year);
-		user.leagues.push({ leagueId: league._id, name: league.name });
+		user.leagues.push({ leagueId: league._id.toString(), name: league.name });
 		await this.createNewWeekForLeagues([league], weekTracker);
 
 		let isLeagueSaveSuccess = await this.leagueRepository.saveLeagueAndUser(user, league);
 		if (!isLeagueSaveSuccess) {
 			return ApiResponseMessage.CREATE_FAIL;
 		}
-		return Utils.mapToUserDto(user);
+		return Utils.signToken(user);
 	}
 
-	public async sendInvitation(tokenUser: TokenUser, inviteData: SendInvitationDto) {
+	public async sendInvitation(tokenUser: UserDTO, inviteData: SendInvitationDto) {
 		const league = await this.leagueRepository.getLeagueById(inviteData.leagueId);
 		if (!league) {
 			return ApiResponseMessage.LEAGUES_NOT_FOUND;
 		}
 
-		if (tokenUser.userId !== league.creator) {
+		if (tokenUser.id !== league.creator) {
 			return ApiResponseMessage.NO_INVITATION_RIGHT;
 		}
 
@@ -69,81 +69,113 @@ export class LeagueService {
 			return ApiResponseMessage.NO_EMAIL_FOUND;
 		}
 
-		if (league.players.find(user => user.id.toString() === invitedUser._id.toString())) {
+		const userId = invitedUser._id.toString();
+		if (league.players.find(user => user.id === userId)) {
 			return ApiResponseMessage.USER_ALREADY_IN_LEAGUE;
 		}
 
+		const leagueId = league._id.toString();
 		if (
-			league.invitations.includes(invitedUser._id.toString()) ||
-			invitedUser.invitations.find(invite => invite.leagueId.toString() === league._id.toString())
+			league.invitations.includes(userId) ||
+			invitedUser.invitations.find(invite => invite.leagueId === leagueId)
 		) {
 			return ApiResponseMessage.USER_ALREADY_INVITED;
 		}
 
-		league.invitations.push(invitedUser._id);
-		invitedUser.invitations.push({ leagueId: league._id, name: league.name });
+		league.invitations.push(userId);
+		invitedUser.invitations.push({ leagueId: leagueId, name: league.name });
 		const isSaveSuccess = await this.leagueRepository.saveLeagueAndUser(invitedUser, league);
 		return isSaveSuccess ? ApiResponseMessage.INVITATION_SUCCESS : ApiResponseMessage.INVITATION_FAIL;
 	}
 
-	public async acceptInvitation(tokenUser: TokenUser, leagueId: string): Promise<UserDTO | ApiResponseMessage> {
+	public async acceptInvitation(tokenUser: UserDTO, leagueId: string): Promise<{ token: string } | ApiResponseMessage> {
 		const league = await this.leagueRepository.getLeagueById(leagueId);
 		if (!league) {
 			return ApiResponseMessage.LEAGUES_NOT_FOUND;
 		}
 
-		const user = await this.userRepositoryService.getUserById(tokenUser.userId);
+		const user = await this.userRepositoryService.getUserById(tokenUser.id);
 		if (!user) {
 			return ApiResponseMessage.NOT_FOUND;
 		}
 
-		if (!league.invitations.includes(user._id.toString())) {
+		const userId = user._id.toString();
+		if (!league.invitations.includes(userId)) {
 			return ApiResponseMessage.USER_NOT_INVITED;
 		}
 
 		// remove invitation from user
-		user.invitations.splice(user.invitations.findIndex(elem => elem.leagueId.toString() === league._id.toString()), 1);
+		user.invitations.splice(user.invitations.findIndex(elem => elem.leagueId.toString() === leagueId), 1);
 		// add league to user's league
-		user.leagues.push({ leagueId: league._id, name: league.name });
+		user.leagues.push({ leagueId: leagueId, name: league.name });
 		// remove invitation from league
-		league.invitations.splice(league.invitations.indexOf(user._id));
+		league.invitations.splice(league.invitations.indexOf(userId));
 		// add player to league
-		league.players.push({ id: user._id, name: user.username, avatar: user.avatarUrl });
+		league.players.push({ id: userId, name: user.username, avatar: user.avatarUrl });
 		const currentSeason = league.seasons.find(season => season.isOpen);
 		// user added to season final winner object
-		currentSeason.finalWinner[user._id.toString()] = null;
+		currentSeason.finalWinner[userId] = null;
 		// add user to season standings
-		currentSeason.standings.push({ id: user._id.toString(), name: user.username, score: 0 })
+		currentSeason.standings.push({ id: userId, name: user.username, score: 0 })
 		if (currentSeason.weeks.length) {
 			const currentWeek = currentSeason.weeks.find(week => week.isOpen);
 			// add user to current week bets
 			currentWeek.games.forEach(game => {
-				game.bets.push({ id: user._id, name: user.username, bet: null });
+				game.bets.push({ id: userId, name: user.username, bet: null });
 			})
 		}
 		const isSaveSuccess = await this.leagueRepository.saveLeagueAndUser(user, league);
-		return isSaveSuccess ? Utils.mapToUserDto(user) : ApiResponseMessage.JOIN_FAIL;
+		return isSaveSuccess ? Utils.signToken(user) : ApiResponseMessage.JOIN_FAIL;
 	}
 
 	public async getLeaguesData(leagueIds: string[]): Promise<LeagueDataDto[]> {
 		return await this.leagueRepository.getLeaguesData(leagueIds);
 	}
 
+	public async getLeague(tokenUser: UserDTO, leagueId: string): Promise<LeagueDto | ApiResponseMessage> {
+		const league = await this.leagueRepository.getLeagueById(leagueId);
+		if (!league) {
+			return ApiResponseMessage.NOT_FOUND;
+		}
+		if (!league.players.some(player => player.id === tokenUser.id)) {
+			return ApiResponseMessage.DATABASE_ERROR;
+		}
+		const weekTracker = await this.weekTrackerRepository.getTracker();
+		if (!weekTracker) {
+			return ApiResponseMessage.DATABASE_ERROR;
+		}
+
+		const currentSeason = league.seasons.find(season => season.isOpen);
+		const currentWeek = currentSeason.weeks.find(week => week.isOpen);
+		const firstGameStart = new Date(currentWeek.games.sort((a, b) => a.startTime > b.startTime ? 1 : -1)[0].startTime).getTime();
+
+		const userId = tokenUser.id.toString();
+		if (weekTracker.week === 1 && new Date().getTime() < firstGameStart) {
+			currentSeason.finalWinner = { [userId]: currentSeason.finalWinner[userId] };
+		}
+
+		currentWeek.games.forEach(game => {
+			game.bets = game.bets.filter(bet => bet.id.toString() === userId);
+		});
+		return Utils.mapToLeagueDto(league);
+	}
+
 	private createLeagueDocument(user: UserDocument, leagueData: CreateLeagueDTO, year: number) {
+		const userId = user._id.toString();
 		return new LeagueModel({
 			name: leagueData.name,
-			creator: user._id,
+			creator: userId,
 			invitations: [],
-			players: [{ id: user._id, name: user.username, avatar: user.avatarUrl }],
+			players: [{ id: userId, name: user.username, avatar: user.avatarUrl }],
 			seasons: [
 				new SeasonModel({
 					year: year,
 					numberOfSeason: year - 1919,
 					numberOfSuperBowl: year - 1965,
 					weeks: [],
-					standings: [{ id: user._id, name: user.username, score: 0 }],
+					standings: [{ id: userId, name: user.username, score: 0 }],
 					finalWinner: {
-						[user._id.toString()]: null
+						[userId]: null
 					},
 					isOpen: true
 				})
@@ -192,7 +224,7 @@ export class LeagueService {
 			});
 
 			for (const player of league.players) {
-				newGame.bets.push({ id: player.id, name: player.name, bet: null })
+				newGame.bets.push({ id: player.id, name: player.name, bet: null });
 			}
 			week.games.push(newGame);
 		}

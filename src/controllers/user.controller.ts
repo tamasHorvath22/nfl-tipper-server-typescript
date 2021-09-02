@@ -6,7 +6,6 @@ import { Service } from 'typedi';
 import { RegisterDTO } from '../types/register-dto';
 import { NewPasswordDTO } from '../types/new-password-dto';
 import { ApiResponseMessage } from '../constants/api-response-message';
-import { UserDTO } from '../types/user-dto';
 import { Utils } from "../utils";
 
 @JsonController()
@@ -53,16 +52,11 @@ export class UserController {
     return await this.userService.changePassword(Utils.getUserFromToken(authorization), body);
   }
 
-  @Post('/api/get-user')
-  public async getUser(@HeaderParam('authorization') authorization: string): Promise<UserDTO | ApiResponseMessage> {
-    return await this.userService.getUser(Utils.getUserFromToken(authorization));
-  }
-
   @Post('/api/user/change')
   public async changeUserData(
     @HeaderParam('authorization') authorization: string,
     @Body() body: { avatarUrl: string }
-  ): Promise<UserDTO | ApiResponseMessage> {
+  ): Promise<{ token: string } | ApiResponseMessage> {
     return await this.userService.changeUserData(Utils.getUserFromToken(authorization), body.avatarUrl);
   }
 }

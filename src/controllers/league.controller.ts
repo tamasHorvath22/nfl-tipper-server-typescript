@@ -1,12 +1,12 @@
-import {Body, HeaderParam, JsonController, Post} from "routing-controllers";
-import {Service} from 'typedi';
-import {ApiResponseMessage} from '../constants/api-response-message';
-import {CreateLeagueDTO} from "../types/create-league.dto";
-import {Utils} from "../utils";
-import {LeagueService} from "../services/league.service";
-import {UserDTO} from "../types/user-dto";
-import {SendInvitationDto} from "../types/send-invitation.dto";
-import {LeagueDataDto} from "../types/league-data.dto";
+import { Body, HeaderParam, JsonController, Post } from "routing-controllers";
+import { Service } from 'typedi';
+import { ApiResponseMessage } from '../constants/api-response-message';
+import { CreateLeagueDTO } from "../types/create-league.dto";
+import { Utils } from "../utils";
+import { LeagueService } from "../services/league.service";
+import { SendInvitationDto } from "../types/send-invitation.dto";
+import { LeagueDataDto } from "../types/league-data.dto";
+import { LeagueDto } from "../types/league.dto";
 
 @JsonController('/api')
 @Service()
@@ -18,7 +18,7 @@ export class LeagueController {
   public async register(
     @HeaderParam('authorization') authorization: string,
     @Body() body: CreateLeagueDTO
-  ): Promise<UserDTO | ApiResponseMessage> {
+  ): Promise<{ token: string } | ApiResponseMessage> {
     return await this.leagueService.createLeague(Utils.getUserFromToken(authorization), body);
   }
 
@@ -34,7 +34,7 @@ export class LeagueController {
   public async acceptInvitation(
     @HeaderParam('authorization') authorization: string,
     @Body() body: { leagueId: string }
-  ): Promise<UserDTO | ApiResponseMessage> {
+  ): Promise<{ token: string } | ApiResponseMessage> {
     return await this.leagueService.acceptInvitation(Utils.getUserFromToken(authorization), body.leagueId);
   }
 
@@ -43,4 +43,11 @@ export class LeagueController {
     return await this.leagueService.getLeaguesData(body.leagueIds);
   }
 
+  @Post('/get-league')
+  public async getLeague(
+    @HeaderParam('authorization') authorization: string,
+    @Body() body: { leagueId: string }
+  ): Promise<LeagueDto | ApiResponseMessage> {
+    return await this.leagueService.getLeague(Utils.getUserFromToken(authorization), body.leagueId);
+  }
 }
