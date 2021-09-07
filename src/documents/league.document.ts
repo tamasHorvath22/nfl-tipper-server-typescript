@@ -1,5 +1,8 @@
 import { BetType } from "../constants/bet-types";
 import { BaseDocument } from "./base.document";
+import { TeamAlias } from "../constants/team-alias";
+import { GameStatus } from "../constants/game-status";
+import { GameOutcome } from "../constants/game-outcome";
 
 
 export interface LeagueDocument extends BaseDocument {
@@ -31,19 +34,19 @@ export interface WeekDocument extends BaseDocument {
 export interface GameDocument extends BaseDocument {
   gameId: string;
   homeTeam: string;
-  homeTeamAlias: string;
+  homeTeamAlias: TeamAlias;
   awayTeam: string;
-  awayTeamAlias: string;
-  status: string;
+  awayTeamAlias: TeamAlias;
+  status: GameStatus;
   homeScore: number;
   awayScore: number;
   season: number;
   weekNo: number;
   startTime: Date;
   isOpen: boolean;
-  winner: string;
-  winnerTeamAlias: string;
-  winnerValue: string;
+  winner: GameOutcome;
+  winnerTeamAlias: TeamAlias;
+  winnerValue: BetType;
   bets: Bet[]
 }
 

@@ -24,5 +24,15 @@ export class DataService {
 		}
 	}
 
+	public async getTeamStandingsData(): Promise<any> {
+		const standingUrl = '/seasons/2020/standings.json?api_key=';
+		const path = `${this.baseUrl}${standingUrl}${ConfigService.getEnvValue('SPORTRADAR_KEY')}`;
+
+		try {
+			return await axios.get(path);
+		} catch {
+			return null;
+		}
+	}
 
 }

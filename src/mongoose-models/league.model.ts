@@ -2,7 +2,7 @@ import mongoose, { Schema } from 'mongoose';
 import { DocumentName } from '../constants/document-names';
 import { LeagueDocument } from '../documents/league.document';
 
-const emailConfirmSchema = new Schema<LeagueDocument>({
+const leagueSchema = new Schema<LeagueDocument>({
   players: [],
   invitations: [],
   seasons: [],
@@ -11,4 +11,4 @@ const emailConfirmSchema = new Schema<LeagueDocument>({
   leagueAvatarUrl: String
 }, { timestamps: true });
 
-export default mongoose.model<LeagueDocument>(DocumentName.LEAGUE, emailConfirmSchema);
+export default mongoose.model<LeagueDocument>(DocumentName.LEAGUE, leagueSchema);

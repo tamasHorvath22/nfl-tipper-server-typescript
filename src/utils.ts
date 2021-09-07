@@ -57,4 +57,8 @@ export class Utils {
 	public static signToken(user: UserDocument): { token: string } {
 		return { token: jwt.sign(Utils.mapToUserDto(user), ConfigService.getEnvValue('JWT_PRIVATE_KEY')) };
 	}
+
+	public static waitFor(millis: number): Promise<void> {
+		return new Promise(resolve => setTimeout(() => resolve(), millis));
+	}
 }

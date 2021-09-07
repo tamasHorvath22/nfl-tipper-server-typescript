@@ -1,4 +1,4 @@
-import { Body, HeaderParam, JsonController, Post } from "routing-controllers";
+import {Body, Get, HeaderParam, JsonController, Post} from "routing-controllers";
 import { Service } from 'typedi';
 import { ApiResponseMessage } from '../constants/api-response-message';
 import { CreateLeagueDTO } from "../types/create-league.dto";
@@ -7,6 +7,9 @@ import { LeagueService } from "../services/league.service";
 import { SendInvitationDto } from "../types/send-invitation.dto";
 import { LeagueDataDto } from "../types/league-data.dto";
 import { LeagueDto } from "../types/league.dto";
+import { BetDto } from "../types/bet.dto";
+import { FinalWinnerDto } from "../types/final-winner.dto";
+import { TeamStandingsDocument } from "../documents/team-standings.document";
 
 @JsonController('/api')
 @Service()
@@ -49,5 +52,34 @@ export class LeagueController {
     @Body() body: { leagueId: string }
   ): Promise<LeagueDto | ApiResponseMessage> {
     return await this.leagueService.getLeague(Utils.getUserFromToken(authorization), body.leagueId);
+  }
+
+  @Post('/league/save-week-bets')
+  public async saveWeekBets(
+    @HeaderParam('authorization') authorization: string,
+    @Body() body: BetDto
+  ): Promise<LeagueDto | ApiResponseMessage> {
+    return await this.leagueService.saveWeekBets(Utils.getUserFromToken(authorization), body);
+  }
+
+  @Post('/league/save-final-winner')
+  public async saveFinalWinner(
+    @HeaderParam('authorization') authorization: string,
+    @Body() body: FinalWinnerDto
+  ): Promise<LeagueDto | ApiResponseMessage> {
+    return await this.leagueService.saveFinalWinner(Utils.getUserFromToken(authorization), body);
+  }
+
+  @Get('/league/get-teams-standings')
+  public async getTeamStandings(
+  ): Promise<TeamStandingsDocument | ApiResponseMessage> {
+    return await this.leagueService.getTeamStandings();
+  }
+
+  @Post('/league/evaluate')
+  public async evaluate(
+    @HeaderParam('authorization') authorization: string,
+  ): Promise<LeagueDto | ApiResponseMessage> {
+    return await this.leagueService.evaluate(Utils.getUserFromToken(authorization));
   }
 }

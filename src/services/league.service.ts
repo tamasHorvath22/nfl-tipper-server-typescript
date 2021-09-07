@@ -6,8 +6,9 @@ import { WeekTrackerRepository } from "../repositories/week-tracker.repository";
 import { UserDocument } from "../documents/user.document";
 import LeagueModel from '../mongoose-models/league.model';
 import SeasonModel from '../mongoose-models/season.model';
+import TeamStandingsModel from '../mongoose-models/team-standings.model';
 import { LeagueRepositoryService } from "../repositories/league.repository";
-import { LeagueDocument } from "../documents/league.document";
+import { GameDocument, LeagueDocument, SeasonDocument } from "../documents/league.document";
 import { DataService } from "./data.service";
 import { WeekTrackerDocument } from "../documents/week-tracker.document";
 import WeekModel from '../mongoose-models/week.model';
@@ -19,6 +20,11 @@ import { SendInvitationDto } from "../types/send-invitation.dto";
 import { LeagueDataDto } from "../types/league-data.dto";
 import { LeagueDto } from "../types/league.dto";
 import { UserDTO } from "../types/user-dto";
+import { BetDto } from "../types/bet.dto";
+import { FinalWinnerDto } from "../types/final-winner.dto";
+import { BetType } from "../constants/bet-types";
+import { TeamStandingsDocument } from "../documents/team-standings.document";
+import { GameOutcome } from "../constants/game-outcome";
 
 @Service()
 export class LeagueService {
@@ -160,6 +166,283 @@ export class LeagueService {
 		return Utils.mapToLeagueDto(league);
 	}
 
+	public async saveWeekBets(tokenUser: UserDTO, betDto: BetDto) {
+		const user = await this.userRepositoryService.getUserById(tokenUser.id);
+		if (!user) {
+			return ApiResponseMessage.DATABASE_ERROR;
+		}
+
+		const leagueIdList = betDto.isForAllLeagues ? user.leagues.map(league => league.leagueId) : [betDto.leagueId];
+		const leagues = await this.leagueRepository.getLeaguesByIds(leagueIdList);
+		const weekTracker = await this.weekTrackerRepository.getTracker();
+		if (!leagues || !weekTracker) {
+			return ApiResponseMessage.DATABASE_ERROR;
+		}
+		for (const league of leagues) {
+			this.saveBetsForOneLeague(tokenUser.id, league, betDto, weekTracker.year);
+		}
+		const isSaveSuccess = await this.leagueRepository.updateLeagues(leagues);
+		return isSaveSuccess ? ApiResponseMessage.BET_SAVE_SUCCESS : ApiResponseMessage.BET_SAVE_FAIL;
+	}
+
+	public async saveFinalWinner(tokenUser: UserDTO, finalWinnerDto: FinalWinnerDto) {
+		const league = await this.leagueRepository.getLeagueById(finalWinnerDto.leagueId);
+		if (!league) {
+			return ApiResponseMessage.LEAGUES_NOT_FOUND;
+		}
+		if (!league.players.some(player => player.id === tokenUser.id)) {
+			return ApiResponseMessage.DATABASE_ERROR;
+		}
+
+		const currentSeason = league.seasons.find(season => season.isOpen);
+		currentSeason.finalWinner[tokenUser.id] = finalWinnerDto.finalWinner;
+
+		const isSaveSuccess = await this.leagueRepository.updateLeagues([league]);
+		return isSaveSuccess ? ApiResponseMessage.UPDATE_SUCCESS : ApiResponseMessage.UPDATE_FAIL;
+	}
+
+	public async getTeamStandings(): Promise<TeamStandingsDocument | ApiResponseMessage> {
+		const weekTracker = await this.weekTrackerRepository.getTracker();
+		if (!weekTracker) {
+			return ApiResponseMessage.DATABASE_ERROR;
+		}
+		const teamStandings = await this.leagueRepository.findStandingsByYear(weekTracker.year);
+		if (!teamStandings) {
+			return ApiResponseMessage.DATABASE_ERROR;
+		}
+		return teamStandings;
+	}
+
+	public async evaluate(tokenUser: UserDTO): Promise<ApiResponseMessage> {
+		if (!tokenUser.isAdmin) {
+			return ApiResponseMessage.DATABASE_ERROR;
+		}
+		const leagues = await this.leagueRepository.getAllLeagues();
+		const weekTracker = await this.weekTrackerRepository.getTracker();
+		if (!leagues || !weekTracker) {
+			return ApiResponseMessage.DATABASE_ERROR;
+		}
+		const weekResults = await this.dataService.getWeekData(weekTracker);
+		if (!weekResults) {
+			return ApiResponseMessage.UPDATE_FAIL;
+		}
+		const isThisSuperBowlWeek = this.isSuperBowlWeek(weekResults);
+		let isWeekOver = false;
+
+		for (const league of leagues) {
+			const resultObject = { isWeekOver: true };
+			for (const player of league.players) {
+				// @ts-ignore
+				resultObject[player.id] = 0;
+			}
+
+			const currentSeason = league.seasons.find(season => season.year === weekResults.year);
+			const currWeek = currentSeason.weeks.find(week => week.weekId === weekResults.week.id);
+			const evaluateWeekResults = this.evaluateWeek(currWeek.games, weekResults.week.games, resultObject);
+
+			for (const standing of currentSeason.standings) {
+				standing.score += evaluateWeekResults[standing.id];
+			}
+
+			if (evaluateWeekResults.isWeekOver) {
+				isWeekOver = true;
+				currWeek.isOpen = false;
+				if (isThisSuperBowlWeek) {
+					this.checkFinalWinnerBets(currentSeason, this.getSuperbowlWinner(weekResults.week.games[0]));
+				}
+			}
+		}
+
+		await this.updateTeamStandings();
+
+		// TODO do we need this delay?
+		// await Utils.waitFor(1500);
+
+		if (!isWeekOver) {
+			const isSaveSuccess = await this.leagueRepository.updateLeagues(leagues);
+			if (!isSaveSuccess) {
+				return ApiResponseMessage.UPDATE_FAIL;
+			}
+			return ApiResponseMessage.EVALUATION_SUCCESS;
+		}
+
+		if (isThisSuperBowlWeek) {
+			return ApiResponseMessage.EVALUATION_SUCCESS;
+		}
+
+		const freshWeekTracker = this.stepWeekTracker(weekTracker);
+
+		// TODO do we need this delay?
+		// await Utils.waitFor(1500);
+
+		const isCreateSuccess = await this.createNewWeekForLeagues(leagues, freshWeekTracker);
+		if (!isCreateSuccess) {
+			return ApiResponseMessage.DATABASE_ERROR;
+		}
+
+		const isSaveSuccess = await this.leagueRepository.saveLeaguesAndWeekTracker(leagues, freshWeekTracker);
+		return isSaveSuccess ? ApiResponseMessage.EVALUATION_SUCCESS : ApiResponseMessage.EVALUATION_FAIL;
+	}
+
+	private stepWeekTracker(weekTracker: WeekTrackerDocument): WeekTrackerDocument {
+		if (weekTracker.regOrPst === WeekType.POSTSEASON && weekTracker.week === 4) {
+			// after super bowl, when evaluating the week, not changing the week tracker
+			return;
+		}
+
+		if (weekTracker.regOrPst === WeekType.REGULAR && weekTracker.week === 18) {
+			weekTracker.week = 1;
+			weekTracker.regOrPst = WeekType.POSTSEASON;
+		} else {
+			weekTracker.week++;
+		}
+		return weekTracker;
+	}
+
+	private getSuperbowlWinner (game: any): string {
+		const winner = game.scoring.home_points > game.scoring.away_points ? 'home' : 'away';
+		return game[winner].alias;
+	}
+
+	private checkFinalWinnerBets(season: SeasonDocument, winner: string) {
+		const hitWinnerPoints = 30;
+		for (const userId of Object.keys(season.finalWinner)) {
+			if (season.finalWinner[userId] === winner) {
+				const userStanding = season.standings.find(standing => standing.id === userId);
+				if (userStanding) {
+					userStanding.score += hitWinnerPoints;
+				}
+			}
+		}
+	}
+
+	private evaluateWeek(leagueGames: GameDocument[], gamesResults: any[], resultObject: any) {
+		const outcomePoints = 1;
+		const intervalPoints = 4;
+		for (const gameResult of gamesResults) {
+			if (!(gameResult.status === GameStatus.CLOSED || gameResult.status === GameStatus.POSTPONED)) {
+				resultObject.isWeekOver = false;
+				continue;
+			}
+			const gameToEvaluate = leagueGames.find(game => game.gameId === gameResult.id);
+			if (!gameToEvaluate) {
+				continue;
+			}
+			if (!gameToEvaluate.isOpen) {
+				continue;
+			}
+			const scoring = gameResult.scoring;
+			gameToEvaluate.status = gameResult.status;
+			gameToEvaluate.homeScore = scoring.home_points;
+			gameToEvaluate.awayScore = scoring.away_points;
+
+			const pointDiff = gameToEvaluate.homeScore - gameToEvaluate.awayScore;
+
+			if (pointDiff === 0) {
+				gameToEvaluate.winner = GameOutcome.TIE;
+				gameToEvaluate.winnerValue = BetType.TIE;
+			} else if (pointDiff <= -15) {
+				gameToEvaluate.winnerValue = BetType.AWAY_15_PLUS;
+			} else if (pointDiff <= -8) {
+				gameToEvaluate.winnerValue = BetType.AWAY_8_14;
+			} else if (pointDiff <= -4) {
+				gameToEvaluate.winnerValue = BetType.AWAY_4_7;
+			} else if (pointDiff <= -1) {
+				gameToEvaluate.winnerValue = BetType.AWAY_0_3;
+			} else if (pointDiff <= 3) {
+				gameToEvaluate.winnerValue = BetType.HOME_0_3;
+			} else if (pointDiff <= 7) {
+				gameToEvaluate.winnerValue = BetType.HOME_4_7;
+			} else if (pointDiff <= 14) {
+				gameToEvaluate.winnerValue = BetType.HOME_8_14;
+			} else if (pointDiff >= 15) {
+				gameToEvaluate.winnerValue = BetType.HOME_15_PLUS;
+			}
+
+			if (pointDiff > 0) {
+				gameToEvaluate.winner = GameOutcome.HOME;
+				gameToEvaluate.winnerTeamAlias = gameToEvaluate.homeTeamAlias;
+			} else if (pointDiff < 0) {
+				gameToEvaluate.winner = GameOutcome.AWAY;
+				gameToEvaluate.winnerTeamAlias = gameToEvaluate.awayTeamAlias;
+			}
+			for (const bet of gameToEvaluate.bets) {
+				if (!bet.bet) {
+					continue;
+				}
+				if (gameToEvaluate.winnerValue === BetType.TIE) {
+					if (bet.bet === BetType.HOME_0_3 || bet.bet === BetType.AWAY_0_3) {
+						resultObject[bet.id] += intervalPoints;
+					}
+				} else {
+					if (bet.bet === gameToEvaluate.winnerValue) {
+						resultObject[bet.id] += intervalPoints;
+					} else if (bet.bet.startsWith(gameToEvaluate.winnerValue.substring(0, 4))) {
+						resultObject[bet.id] += outcomePoints;
+					}
+				}
+			}
+
+			gameToEvaluate.isOpen = false;
+		}
+
+		return resultObject;
+	}
+
+	private isSuperBowlWeek(week: any): boolean {
+		return week.type === WeekType.POSTSEASON && week.week.sequence === 4;
+	}
+
+	private async updateTeamStandings(): Promise<boolean> {
+		const data = await this.dataService.getTeamStandingsData();
+		if (!data) {
+			return false;
+		}
+
+		let standings = await this.leagueRepository.findStandingsByYear(data.data.season.year);
+		if (!standings) {
+			standings = new TeamStandingsModel({
+				year: data.data.season.year,
+				teams: {}
+			});
+		}
+
+		for (const conference of data.data.conferences) {
+			for (const division of conference.divisions) {
+				for (const team of division.teams) {
+					// @ts-ignore
+					standings.teams[team.alias] = {
+						win: team.wins,
+						loss: team.losses,
+						tie: team.ties
+					}
+				}
+			}
+		}
+
+		return await this.leagueRepository.saveTeamStandings(standings);
+	}
+
+	private saveBetsForOneLeague(userId: string, league: LeagueDocument, betsDto: BetDto, currentYear: number) {
+		const currentSeason = league.seasons.find(season => season.year === currentYear);
+		const currentWeek = currentSeason.weeks.find(weekToFind => weekToFind.weekId === betsDto.weekId);
+		const currentTime = new Date().getTime();
+
+		for (const game of currentWeek.games) {
+			if (new Date(game.startTime).getTime() < currentTime) {
+				continue;
+			}
+			const bet = betsDto.bets.find(gameBet => gameBet.gameId === game.gameId);
+			if (!bet) {
+				continue;
+			}
+			const userBet = game.bets.find(bet => bet.id === userId);
+			if (Object.values(BetType).includes(bet.bet)) {
+				userBet.bet = bet.bet;
+			}
+		}
+	}
+
 	private createLeagueDocument(user: UserDocument, leagueData: CreateLeagueDTO, year: number) {
 		const userId = user._id.toString();
 		return new LeagueModel({
@@ -184,8 +467,11 @@ export class LeagueService {
 		});
 	}
 
-	private async createNewWeekForLeagues(leagues: LeagueDocument[], weekTracker: WeekTrackerDocument): Promise<void> {
+	private async createNewWeekForLeagues(leagues: LeagueDocument[], weekTracker: WeekTrackerDocument): Promise<boolean> {
 		const weekData = await this.dataService.getWeekData(weekTracker);
+		if (!weekData) {
+			return false;
+		}
 
 		for (const league of leagues) {
 			const currentSeason = league.seasons.find(season => season.year === weekData.year);
@@ -194,6 +480,7 @@ export class LeagueService {
 			}
 			currentSeason.weeks.push(this.createNewWeekModel(weekData, league));
 		}
+		return true;
 	}
 
 	private createNewWeekModel(weekData: any, league: LeagueDocument) {

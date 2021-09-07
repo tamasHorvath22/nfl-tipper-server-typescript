@@ -2,10 +2,13 @@ import { LeagueDocument } from '../documents/league.document';
 import { Service } from "typedi";
 import mongoose from 'mongoose';
 import LeagueModel from '../mongoose-models/league.model';
+import TeamStandingsModel from '../mongoose-models/team-standings.model';
 import { UserDocument } from "../documents/user.document";
 import Transaction from 'mongoose-transactions-typescript';
 import { DocumentName } from '../constants/document-names';
 import { LeagueDataDto } from "../types/league-data.dto";
+import { TeamStandingsDocument } from "../documents/team-standings.document";
+import { WeekTrackerDocument } from "../documents/week-tracker.document";
 
 @Service()
 export class LeagueRepositoryService {
@@ -42,10 +45,10 @@ export class LeagueRepositoryService {
       console.error(err);
       transaction.rollback();
       return null;
-    };
+    }
   }
 
-  public async saveLeagueAndUser(user: UserDocument, league: LeagueDocument) {
+  public async saveLeagueAndUser(user: UserDocument, league: LeagueDocument): Promise<boolean> {
     const transaction = new Transaction(true);
     league.markModified('seasons')
     transaction.insert(DocumentName.LEAGUE, league);
@@ -61,7 +64,25 @@ export class LeagueRepositoryService {
     }
   }
 
-  public async getLeagueById(id: string) {
+  public async saveLeaguesAndWeekTracker(leagues: LeagueDocument[], weekTracker: WeekTrackerDocument): Promise<boolean> {
+    const transaction = new Transaction(true);
+    for (const league of leagues) {
+      league.markModified('seasons')
+      transaction.insert(DocumentName.LEAGUE, league);
+    }
+    transaction.insert(DocumentName.WEEK_TRACKER, weekTracker);
+
+    try {
+      await transaction.run();
+      return true;
+    } catch (err)  {
+      transaction.rollback();
+      console.error(err);
+      return false;
+    }
+  }
+
+  public async getLeagueById(id: string): Promise<LeagueDocument> {
     try {
       const league = await LeagueModel.findById(id).exec();
       return league ? league : null;
@@ -86,6 +107,55 @@ export class LeagueRepositoryService {
     }
   }
 
+  public async updateLeagues(leagues: LeagueDocument[]): Promise<boolean> {
+    const transaction = new Transaction(true);
+    for (const league of leagues) {
+      league.markModified('seasons');
+      transaction.insert(DocumentName.LEAGUE, league);
+    }
 
+    try {
+      await transaction.run();
+      return true;
+    } catch (err)  {
+      console.error(err);
+      transaction.rollback();
+      return false;
+    }
+  }
+
+  public async findStandingsByYear(year: number): Promise<TeamStandingsDocument> {
+    try {
+      const standings = await TeamStandingsModel.find({ year: year });
+      return standings ? standings[0] : null;
+    } catch(err) {
+      console.error(err);
+      return null
+    }
+  }
+
+  public async saveTeamStandings(standings: TeamStandingsDocument): Promise<boolean> {
+    const transaction = new Transaction(true);
+    transaction.insert(DocumentName.TEAM_STANDINGS, standings);
+
+    try {
+      await transaction.run();
+      return true;
+    } catch (err)  {
+      console.error(err);
+      transaction.rollback();
+      return false;
+    }
+  }
+
+  public async getAllLeagues(): Promise<LeagueDocument[]> {
+    try {
+      const leagues = await LeagueModel.find({});
+      return leagues ? leagues : null
+    } catch(err) {
+      console.error(err);
+      return null;
+    }
+  }
 
 }
