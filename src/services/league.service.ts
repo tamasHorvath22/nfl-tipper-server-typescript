@@ -1,30 +1,31 @@
-import { Service } from "typedi";
-import { ApiResponseMessage } from '../constants/api-response-message';
-import { CreateLeagueDTO } from "../types/create-league.dto";
-import { UserRepositoryService } from "../repositories/user.repository";
-import { WeekTrackerRepository } from "../repositories/week-tracker.repository";
-import { UserDocument } from "../documents/user.document";
+import {Service} from "typedi";
+import {ApiResponseMessage} from '../constants/api-response-message';
+import {CreateLeagueDTO} from "../types/create-league.dto";
+import {UserRepositoryService} from "../repositories/user.repository";
+import {WeekTrackerRepository} from "../repositories/week-tracker.repository";
+import {UserDocument} from "../documents/user.document";
 import LeagueModel from '../mongoose-models/league.model';
 import SeasonModel from '../mongoose-models/season.model';
 import TeamStandingsModel from '../mongoose-models/team-standings.model';
-import { LeagueRepositoryService } from "../repositories/league.repository";
-import { GameDocument, LeagueDocument, SeasonDocument } from "../documents/league.document";
-import { DataService } from "./data.service";
-import { WeekTrackerDocument } from "../documents/week-tracker.document";
+import {LeagueRepositoryService} from "../repositories/league.repository";
+import {GameDocument, LeagueDocument, SeasonDocument} from "../documents/league.document";
+import {DataService} from "./data.service";
+import {WeekTrackerDocument} from "../documents/week-tracker.document";
 import WeekModel from '../mongoose-models/week.model';
 import GameModel from '../mongoose-models/game.model';
-import { WeekType } from "../constants/week-type";
-import { GameStatus } from "../constants/game-status";
-import { Utils } from "../utils";
-import { SendInvitationDto } from "../types/send-invitation.dto";
-import { LeagueDataDto } from "../types/league-data.dto";
-import { LeagueDto } from "../types/league.dto";
-import { UserDTO } from "../types/user-dto";
-import { BetDto } from "../types/bet.dto";
-import { FinalWinnerDto } from "../types/final-winner.dto";
-import { BetType } from "../constants/bet-types";
-import { TeamStandingsDocument } from "../documents/team-standings.document";
-import { GameOutcome } from "../constants/game-outcome";
+import {WeekType} from "../constants/week-type";
+import {GameStatus} from "../constants/game-status";
+import {Utils} from "../utils";
+import {SendInvitationDto} from "../types/send-invitation.dto";
+import {LeagueDataDto} from "../types/league-data.dto";
+import {LeagueDto} from "../types/league.dto";
+import {UserDTO} from "../types/user-dto";
+import {BetDto} from "../types/bet.dto";
+import {FinalWinnerDto} from "../types/final-winner.dto";
+import {BetType} from "../constants/bet-types";
+import {TeamStandingsDocument} from "../documents/team-standings.document";
+import {GameOutcome} from "../constants/game-outcome";
+import {ModifyLeagueDto} from "../types/modify-league.dto";
 
 @Service()
 export class LeagueService {
@@ -227,10 +228,10 @@ export class LeagueService {
 			return ApiResponseMessage.UPDATE_FAIL;
 		}
 		const isThisSuperBowlWeek = this.isSuperBowlWeek(weekResults);
-		let isWeekOver = false;
+		let isWeekOver;
 
 		for (const league of leagues) {
-			const resultObject = { isWeekOver: true };
+			const resultObject = {};
 			for (const player of league.players) {
 				// @ts-ignore
 				resultObject[player.id] = 0;
@@ -244,8 +245,8 @@ export class LeagueService {
 				standing.score += evaluateWeekResults[standing.id];
 			}
 
-			if (evaluateWeekResults.isWeekOver) {
-				isWeekOver = true;
+			isWeekOver = !currWeek.games.some(game => game.isOpen);
+			if (isWeekOver) {
 				currWeek.isOpen = false;
 				if (isThisSuperBowlWeek) {
 					this.checkFinalWinnerBets(currentSeason, this.getSuperbowlWinner(weekResults.week.games[0]));
@@ -266,11 +267,11 @@ export class LeagueService {
 			return ApiResponseMessage.EVALUATION_SUCCESS;
 		}
 
+		const freshWeekTracker = this.stepWeekTracker(weekTracker);
+
 		if (isThisSuperBowlWeek) {
 			return ApiResponseMessage.EVALUATION_SUCCESS;
 		}
-
-		const freshWeekTracker = this.stepWeekTracker(weekTracker);
 
 		// TODO do we need this delay?
 		// await Utils.waitFor(1500);
@@ -284,10 +285,82 @@ export class LeagueService {
 		return isSaveSuccess ? ApiResponseMessage.EVALUATION_SUCCESS : ApiResponseMessage.EVALUATION_FAIL;
 	}
 
+	public async createNewSeason(isAdmin: boolean): Promise<ApiResponseMessage> {
+		if (!isAdmin) {
+			return ApiResponseMessage.DATABASE_ERROR;
+		}
+		const weekTracker = await this.weekTrackerRepository.getTracker();
+		if (!weekTracker || weekTracker.regOrPst === WeekType.REGULAR || weekTracker.week !== 4) {
+			return ApiResponseMessage.DATABASE_ERROR;
+		}
+
+		const updatedWeekTracker = this.stepWeekTracker(weekTracker);
+
+		const leagues = await this.leagueRepository.getAllLeagues();
+		if (!leagues) {
+			return ApiResponseMessage.DATABASE_ERROR;
+		}
+		for (const league of leagues) {
+			if (league.seasons.find(season => season.year === updatedWeekTracker.year)) {
+				continue;
+			}
+			const prevSeason = league.seasons.find(season => season.year === updatedWeekTracker.year - 1);
+			if (prevSeason) {
+				prevSeason.isOpen = false;
+			}
+			const finalWinnerObj = {};
+			for (const player of league.players) {
+				// @ts-ignore
+				finalWinnerObj[player.id] = null;
+			}
+
+			const newSeason = new SeasonModel({
+				year: updatedWeekTracker.year,
+				numberOfSeason: updatedWeekTracker.year - 1919,
+				numberOfSuperBowl: updatedWeekTracker.year - 1965,
+				weeks: [],
+				standings: league.players.map(player => {
+					return { id: player.id, name: player.name, score: 0 }
+				}),
+				finalWinner: finalWinnerObj,
+				isOpen: true
+			});
+			league.seasons.push(newSeason);
+		}
+
+		const isNewWeekCreated = this.createNewWeekForLeagues(leagues, updatedWeekTracker);
+		if (!isNewWeekCreated) {
+			return ApiResponseMessage.DATABASE_ERROR;
+		}
+
+		const isSaveSuccess = this.leagueRepository.saveLeaguesAndWeekTracker(leagues, updatedWeekTracker);
+		if (isSaveSuccess) {
+			return ApiResponseMessage.CREATE_SUCCESS;
+		}
+		return ApiResponseMessage.CREATE_FAIL;
+	}
+
+	public async modifyLeague(userId: string, data: ModifyLeagueDto) {
+		const league = await this.leagueRepository.getLeagueById(data.leagueId);
+		if (!league) {
+			return ApiResponseMessage.LEAGUES_NOT_FOUND;
+		}
+
+		if (userId !== league.creator) {
+			return ApiResponseMessage.NO_MODIFICATION_RIGHTS;
+		}
+		league.leagueAvatarUrl = data.avatarUrl;
+		league.name = data.leagueName;
+
+		const isSaveSuccess = await this.leagueRepository.updateLeagues([league]);
+		return isSaveSuccess ? ApiResponseMessage.UPDATE_SUCCESS : ApiResponseMessage.UPDATE_FAIL;
+	}
+
 	private stepWeekTracker(weekTracker: WeekTrackerDocument): WeekTrackerDocument {
 		if (weekTracker.regOrPst === WeekType.POSTSEASON && weekTracker.week === 4) {
-			// after super bowl, when evaluating the week, not changing the week tracker
-			return;
+			weekTracker.regOrPst = WeekType.REGULAR;
+			weekTracker.week = 1;
+			weekTracker.year++;
 		}
 
 		if (weekTracker.regOrPst === WeekType.REGULAR && weekTracker.week === 18) {
@@ -321,7 +394,6 @@ export class LeagueService {
 		const intervalPoints = 4;
 		for (const gameResult of gamesResults) {
 			if (!(gameResult.status === GameStatus.CLOSED || gameResult.status === GameStatus.POSTPONED)) {
-				resultObject.isWeekOver = false;
 				continue;
 			}
 			const gameToEvaluate = leagueGames.find(game => game.gameId === gameResult.id);

@@ -82,4 +82,11 @@ export class LeagueController {
   ): Promise<LeagueDto | ApiResponseMessage> {
     return await this.leagueService.evaluate(Utils.getUserFromToken(authorization));
   }
+
+  @Post('/league/create-new-season')
+  public async createNewSeason(
+    @HeaderParam('authorization') authorization: string,
+  ): Promise<LeagueDto | ApiResponseMessage> {
+    return await this.leagueService.createNewSeason(Utils.getUserFromToken(authorization).isAdmin);
+  }
 }
