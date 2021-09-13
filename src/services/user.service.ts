@@ -37,6 +37,7 @@ export class UserService {
       username: registerDto.username,
       // TODO password hash
       password: this.decryptPassword(registerDto.password),
+      // password: registerDto.password,
       email: registerDto.email,
       leagues: [],
       invitations: [],
@@ -69,7 +70,7 @@ export class UserService {
   public async login(loginDTO: LoginDTO): Promise<ApiResponseMessage | { token: string }> {
     const user = await this.userRepositoryService.getUserByUsername(loginDTO.username);
     if (!user) {
-      return ApiResponseMessage.DATABASE_ERROR;
+      return ApiResponseMessage.WRONG_USERNAME_OR_PASSWORD;
     }
     if (!user.isEmailConfirmed) {
       return ApiResponseMessage.EMAIL_NOT_CONFIRMED;
@@ -77,7 +78,6 @@ export class UserService {
     try {
       // TODO password hash
       const authenticated = await bcrypt.compare(this.decryptPassword(loginDTO.password), user.password);
-      // const authenticated = await bcrypt.compare(loginDTO.password, user.password);
       if (authenticated) {
         return Utils.signToken(user);
       } else {

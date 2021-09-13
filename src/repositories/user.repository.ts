@@ -30,7 +30,7 @@ export class UserRepositoryService {
       } else {
         return ApiResponseMessage.UNSUCCESSFUL_REGISTRATION;
       }
-    };
+    }
   }
 
   public async getUserByUsername(username: string): Promise<null | UserDocument> {

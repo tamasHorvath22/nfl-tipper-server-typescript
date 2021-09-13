@@ -1,4 +1,4 @@
-import { EmailConfirmDocument } from './../documents/email-confirm.document';
+import { EmailConfirmDocument } from '../documents/email-confirm.document';
 import mongoose, { Schema } from 'mongoose';
 import { DocumentName } from '../constants/document-names';
 

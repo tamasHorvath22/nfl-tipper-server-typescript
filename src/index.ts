@@ -43,5 +43,5 @@ useExpressServer(app, {
 });
 
 app.listen(PORT, (): void => {
-  console.log(`Server Running here https://localhost:${PORT}`);
+  console.log(`Server Running here http://localhost:${PORT}`);
 });

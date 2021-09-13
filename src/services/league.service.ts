@@ -47,7 +47,7 @@ export class LeagueService {
 		const user = await this.userRepositoryService.getUserById(tokenUser.id);
 		const weekTracker = await this.weekTrackerRepository.getTracker();
 		if (!user || !weekTracker) {
-			return ApiResponseMessage.NOT_FOUND;
+			return ApiResponseMessage.DATABASE_ERROR;
 		}
 
 		const league = this.createLeagueDocument(user, leagueData, weekTracker.year);
@@ -56,7 +56,7 @@ export class LeagueService {
 
 		let isLeagueSaveSuccess = await this.leagueRepository.saveLeagueAndUser(user, league);
 		if (!isLeagueSaveSuccess) {
-			return ApiResponseMessage.CREATE_FAIL;
+			return ApiResponseMessage.DATABASE_ERROR;
 		}
 		return Utils.signToken(user);
 	}
@@ -98,17 +98,17 @@ export class LeagueService {
 	public async acceptInvitation(tokenUser: UserDTO, leagueId: string): Promise<{ token: string } | ApiResponseMessage> {
 		const league = await this.leagueRepository.getLeagueById(leagueId);
 		if (!league) {
-			return ApiResponseMessage.LEAGUES_NOT_FOUND;
+			return ApiResponseMessage.DATABASE_ERROR;
 		}
 
 		const user = await this.userRepositoryService.getUserById(tokenUser.id);
 		if (!user) {
-			return ApiResponseMessage.NOT_FOUND;
+			return ApiResponseMessage.DATABASE_ERROR;
 		}
 
 		const userId = user._id.toString();
 		if (!league.invitations.includes(userId)) {
-			return ApiResponseMessage.USER_NOT_INVITED;
+			return ApiResponseMessage.DATABASE_ERROR;
 		}
 
 		// remove invitation from user
@@ -132,7 +132,7 @@ export class LeagueService {
 			})
 		}
 		const isSaveSuccess = await this.leagueRepository.saveLeagueAndUser(user, league);
-		return isSaveSuccess ? Utils.signToken(user) : ApiResponseMessage.JOIN_FAIL;
+		return isSaveSuccess ? Utils.signToken(user) : ApiResponseMessage.DATABASE_ERROR;
 	}
 
 	public async getLeaguesData(leagueIds: string[]): Promise<LeagueDataDto[]> {
