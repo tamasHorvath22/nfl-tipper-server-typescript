@@ -1,23 +1,23 @@
-import { LeagueRepositoryService } from '../repositories/league.repository';
-import { UserRepositoryService } from '../repositories/user.repository';
-import { RegisterDTO } from '../types/register-dto';
-import { Service } from "typedi";
-import { ApiResponseMessage } from '../constants/api-response-message';
+import {LeagueRepositoryService} from '../repositories/league.repository';
+import {UserRepositoryService} from '../repositories/user.repository';
+import {RegisterDTO} from '../types/register-dto';
+import {Service} from "typedi";
+import {ApiResponseMessage} from '../constants/api-response-message';
 import UserModel from '../mongoose-models/user.model';
 import EmailConfirmModel from '../mongoose-models/email-confirm.model';
 import CryptoJS from 'crypto-js';
-import { ConfigService } from './config.service';
-import { RegisterMail } from '../types/register-mail';
-import { MailService } from './mail.service';
-import { MailType } from '../constants/mail-types';
-import { LoginDTO } from '../types/login-dto';
+import {ConfigService} from './config.service';
+import {RegisterMail} from '../types/register-mail';
+import {MailService} from './mail.service';
+import {MailType} from '../constants/mail-types';
+import {LoginDTO} from '../types/login-dto';
 import * as jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import ForgotPasswordModel from '../mongoose-models/forgot-password.model';
-import { NewPasswordDTO } from '../types/new-password-dto';
-import { ChangePasswordDTO } from '../types/change-password.dto';
-import { UserDTO } from '../types/user-dto';
-import { Utils } from "../utils";
+import {NewPasswordDTO} from '../types/new-password-dto';
+import {ChangePasswordDTO} from '../types/change-password.dto';
+import {UserDTO} from '../types/user-dto';
+import {Utils} from "../utils";
 
 
 @Service()
@@ -35,9 +35,7 @@ export class UserService {
     }
     const user = new UserModel({
       username: registerDto.username,
-      // TODO password hash
       password: this.decryptPassword(registerDto.password),
-      // password: registerDto.password,
       email: registerDto.email,
       leagues: [],
       invitations: [],
@@ -76,7 +74,6 @@ export class UserService {
       return ApiResponseMessage.EMAIL_NOT_CONFIRMED;
     }
     try {
-      // TODO password hash
       const authenticated = await bcrypt.compare(this.decryptPassword(loginDTO.password), user.password);
       if (authenticated) {
         return Utils.signToken(user);
@@ -113,21 +110,20 @@ export class UserService {
 
   public async addNewPassword(newPasswordDTO: NewPasswordDTO): Promise<ApiResponseMessage> {
     if (!newPasswordDTO) {
-      return ApiResponseMessage.ERROR;
+      return ApiResponseMessage.DATABASE_ERROR;
     }
     const forgotPassword = await this.userRepositoryService.getForgotPasswordById(newPasswordDTO.hash);
     if (!forgotPassword) {
-      return ApiResponseMessage.ERROR;
+      return ApiResponseMessage.DATABASE_ERROR;
     }
     const user = await this.userRepositoryService.getByEmail(forgotPassword.email);
     if (!user) {
-      return ApiResponseMessage.NOT_FOUND;
+      return ApiResponseMessage.DATABASE_ERROR;
     }
   
-    // TODO
     user.password = this.decryptPassword(newPasswordDTO.password);
-    // user.password = newPasswordDTO.password;
-    return await this.userRepositoryService.createNewPassword(user, forgotPassword);
+    const response = await this.userRepositoryService.createNewPassword(user, forgotPassword);
+    return response ? ApiResponseMessage.RESET_PASSWORD_SUCCESS : ApiResponseMessage.DATABASE_ERROR;
   }
   
   public async checkPassToken(hash: string): Promise<ApiResponseMessage> {
@@ -159,15 +155,11 @@ export class UserService {
     }
     try {
       const authenticated = await bcrypt.compare(
-        // passwords.oldPassword,
-        // TODO
         this.decryptPassword(passwords.oldPassword),
         user.password
       );
       if (authenticated) {
-        // TODO
         user.password = this.decryptPassword(passwords.newPassword)
-        // user.password = passwords.newPassword;
         const userSaveResult = await this.userRepositoryService.changePassword(user);
         if (userSaveResult) {
           return { token: jwt.sign(Utils.mapToUserDto(user), ConfigService.getEnvValue('JWT_PRIVATE_KEY')) };
@@ -197,7 +189,7 @@ export class UserService {
         return ApiResponseMessage.LEAGUES_NOT_FOUND;
       }
       for (const league of leagues) {
-        league.players.find(player => user._id.toString() === player.id).avatar = user.avatarUrl;
+        league.players.find(player => player.id === user._id.toString()).avatar = user.avatarUrl;
       }
     }
     const result = await this.leagueRepositoryService.changeUserData(user, leagues);

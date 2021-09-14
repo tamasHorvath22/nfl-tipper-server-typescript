@@ -74,7 +74,7 @@ export class UserRepositoryService {
       console.error(err);
       transaction.rollback();
       return false;
-    };
+    }
   }
 
   public async getForgotPasswordById(id: string): Promise<ForgotPasswordDocument | null> {
@@ -86,19 +86,19 @@ export class UserRepositoryService {
     }
   }
 
-  public async createNewPassword(user: UserDocument, forgotPassword: ForgotPasswordDocument): Promise<ApiResponseMessage> {
+  public async createNewPassword(user: UserDocument, forgotPassword: ForgotPasswordDocument): Promise<boolean> {
     const transaction = new Transaction(true);
     transaction.insert(DocumentName.USER, user);
     transaction.remove(DocumentName.FORGOT_PASSWORD, forgotPassword._id);
   
     try {
       await transaction.run();
-      return ApiResponseMessage.RESET_PASSWORD_SUCCESS;
+      return true;
     } catch (err)  {
       console.error(err);
       transaction.rollback();
-      return ApiResponseMessage.RESET_PASSWORD_FAIL;
-    };
+      return false;
+    }
   }
 
   public async getEmailConfirmById(id: string) {
@@ -123,7 +123,7 @@ export class UserRepositoryService {
       console.error(err);
       transaction.rollback();
       return false;
-    };
+    }
   }
 
   public async changePassword(user: UserDocument): Promise<boolean> {
@@ -137,7 +137,7 @@ export class UserRepositoryService {
       console.error(err);
       transaction.rollback();
       return false;
-    };
+    }
   }
   
   

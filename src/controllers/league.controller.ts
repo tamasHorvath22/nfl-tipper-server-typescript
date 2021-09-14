@@ -79,7 +79,7 @@ export class LeagueController {
   @Post('/league/evaluate')
   public async evaluate(
     @HeaderParam('authorization') authorization: string,
-  ): Promise<LeagueDto | ApiResponseMessage> {
+  ): Promise<ApiResponseMessage> {
     return await this.leagueService.evaluate(Utils.getUserFromToken(authorization));
   }
 

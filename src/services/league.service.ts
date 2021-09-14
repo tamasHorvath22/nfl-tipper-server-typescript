@@ -225,7 +225,7 @@ export class LeagueService {
 		}
 		const weekResults = await this.dataService.getWeekData(weekTracker);
 		if (!weekResults) {
-			return ApiResponseMessage.UPDATE_FAIL;
+			return ApiResponseMessage.DATABASE_ERROR;
 		}
 		const isThisSuperBowlWeek = this.isSuperBowlWeek(weekResults);
 		let isWeekOver;
@@ -262,7 +262,7 @@ export class LeagueService {
 		if (!isWeekOver) {
 			const isSaveSuccess = await this.leagueRepository.updateLeagues(leagues);
 			if (!isSaveSuccess) {
-				return ApiResponseMessage.UPDATE_FAIL;
+				return ApiResponseMessage.DATABASE_ERROR;
 			}
 			return ApiResponseMessage.EVALUATION_SUCCESS;
 		}
@@ -282,7 +282,7 @@ export class LeagueService {
 		}
 
 		const isSaveSuccess = await this.leagueRepository.saveLeaguesAndWeekTracker(leagues, freshWeekTracker);
-		return isSaveSuccess ? ApiResponseMessage.EVALUATION_SUCCESS : ApiResponseMessage.EVALUATION_FAIL;
+		return isSaveSuccess ? ApiResponseMessage.EVALUATION_SUCCESS : ApiResponseMessage.DATABASE_ERROR;
 	}
 
 	public async createNewSeason(isAdmin: boolean): Promise<ApiResponseMessage> {
