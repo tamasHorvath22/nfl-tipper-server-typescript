@@ -1,4 +1,5 @@
 import { Bet, Player, PlayerStanding } from "../documents/league.document";
+import {TeamStandingsDto} from "./team-standings.dto";
 
 export interface LeagueDto {
 	players: Player[];
@@ -8,6 +9,7 @@ export interface LeagueDto {
 	creator: string;
 	leagueAvatarUrl: string;
 	id: string;
+	teamStandings: TeamStandingsDto
 }
 
 export interface SeasonDto {

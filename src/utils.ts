@@ -5,6 +5,7 @@ import { LeagueDocument } from "./documents/league.document";
 import { LeagueDto } from "./types/league.dto";
 import * as jwt from "jsonwebtoken";
 import { ConfigService } from "./services/config.service";
+import { TeamStandingsDto } from "./types/team-standings.dto";
 
 export class Utils {
 
@@ -25,7 +26,7 @@ export class Utils {
 		}
 	}
 
-	public static mapToLeagueDto(league: LeagueDocument): LeagueDto {
+	public static mapToLeagueDto(league: LeagueDocument, teamStandings: TeamStandingsDto): LeagueDto {
 		return {
 			players: league.players,
 			invitations: league.invitations,
@@ -50,7 +51,8 @@ export class Utils {
 			name: league.name,
 			creator: league.creator,
 			leagueAvatarUrl: league.leagueAvatarUrl,
-			id: league._id.toString()
+			id: league._id.toString(),
+			teamStandings: teamStandings
 		}
 	}
 

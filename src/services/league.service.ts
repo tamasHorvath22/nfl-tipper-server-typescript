@@ -161,10 +161,19 @@ export class LeagueService {
 			currentSeason.finalWinner = { [userId]: currentSeason.finalWinner[userId] };
 		}
 
-		currentWeek.games.forEach(game => {
+		const teamStandings = await this.leagueRepository.findStandingsByYear(weekTracker.year);
+		if (!teamStandings) {
+			teamStandings.teams = null;
+		}
+
+		const now = new Date().getTime();
+		for (const game of currentWeek.games) {
+			if (new Date(game.startTime).getTime() < now) {
+				continue;
+			}
 			game.bets = game.bets.filter(bet => bet.id.toString() === userId);
-		});
-		return Utils.mapToLeagueDto(league);
+		}
+		return Utils.mapToLeagueDto(league, teamStandings.teams);
 	}
 
 	public async saveWeekBets(tokenUser: UserDTO, betDto: BetDto) {
@@ -200,18 +209,6 @@ export class LeagueService {
 
 		const isSaveSuccess = await this.leagueRepository.updateLeagues([league]);
 		return isSaveSuccess ? ApiResponseMessage.UPDATE_SUCCESS : ApiResponseMessage.UPDATE_FAIL;
-	}
-
-	public async getTeamStandings(): Promise<TeamStandingsDocument | ApiResponseMessage> {
-		const weekTracker = await this.weekTrackerRepository.getTracker();
-		if (!weekTracker) {
-			return ApiResponseMessage.DATABASE_ERROR;
-		}
-		const teamStandings = await this.leagueRepository.findStandingsByYear(weekTracker.year);
-		if (!teamStandings) {
-			return ApiResponseMessage.DATABASE_ERROR;
-		}
-		return teamStandings;
 	}
 
 	public async evaluate(tokenUser: UserDTO): Promise<ApiResponseMessage> {
@@ -343,17 +340,31 @@ export class LeagueService {
 	public async modifyLeague(userId: string, data: ModifyLeagueDto) {
 		const league = await this.leagueRepository.getLeagueById(data.leagueId);
 		if (!league) {
-			return ApiResponseMessage.LEAGUES_NOT_FOUND;
+			return ApiResponseMessage.DATABASE_ERROR;
 		}
 
 		if (userId !== league.creator) {
-			return ApiResponseMessage.NO_MODIFICATION_RIGHTS;
+			return ApiResponseMessage.DATABASE_ERROR;
 		}
-		league.leagueAvatarUrl = data.avatarUrl;
-		league.name = data.leagueName;
+		league.leagueAvatarUrl = data.avatar;
+		league.name = data.name;
 
-		const isSaveSuccess = await this.leagueRepository.updateLeagues([league]);
-		return isSaveSuccess ? ApiResponseMessage.UPDATE_SUCCESS : ApiResponseMessage.UPDATE_FAIL;
+		const saveResponse = await this.leagueRepository.updateLeagues([league]);
+		if (saveResponse) {
+
+			let teamStandings = { teams: null }
+			const weekTracker = await this.weekTrackerRepository.getTracker();
+			if (!weekTracker) {
+				teamStandings = await this.leagueRepository.findStandingsByYear(weekTracker.year);
+				if (!teamStandings) {
+					teamStandings = { teams: null }
+				}
+			}
+
+			const league = saveResponse.find(league => league.id === data.leagueId);
+			return Utils.mapToLeagueDto(league, teamStandings.teams);
+		}
+		return ApiResponseMessage.DATABASE_ERROR;
 	}
 
 	private stepWeekTracker(weekTracker: WeekTrackerDocument): WeekTrackerDocument {

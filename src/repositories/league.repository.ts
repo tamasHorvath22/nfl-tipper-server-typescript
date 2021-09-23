@@ -107,7 +107,7 @@ export class LeagueRepositoryService {
     }
   }
 
-  public async updateLeagues(leagues: LeagueDocument[]): Promise<boolean> {
+  public async updateLeagues(leagues: LeagueDocument[]): Promise<LeagueDocument[]> {
     const transaction = new Transaction(true);
     for (const league of leagues) {
       league.markModified('seasons');
@@ -116,18 +116,20 @@ export class LeagueRepositoryService {
 
     try {
       await transaction.run();
-      return true;
     } catch (err)  {
       console.error(err);
       transaction.rollback();
-      return false;
+      return null;
     }
   }
 
   public async findStandingsByYear(year: number): Promise<TeamStandingsDocument> {
     try {
-      const standings = await TeamStandingsModel.find({ year: year });
-      return standings ? standings[0] : null;
+      const standings = await TeamStandingsModel.findOne({ year: year });
+      if (standings) {
+        return JSON.parse(JSON.stringify(standings));
+      }
+      return null;
     } catch(err) {
       console.error(err);
       return null

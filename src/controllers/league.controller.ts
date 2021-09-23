@@ -1,4 +1,4 @@
-import {Body, Get, HeaderParam, JsonController, Post} from "routing-controllers";
+import {Body, HeaderParam, JsonController, Post} from "routing-controllers";
 import { Service } from 'typedi';
 import { ApiResponseMessage } from '../constants/api-response-message';
 import { CreateLeagueDTO } from "../types/create-league.dto";
@@ -9,7 +9,7 @@ import { LeagueDataDto } from "../types/league-data.dto";
 import { LeagueDto } from "../types/league.dto";
 import { BetDto } from "../types/bet.dto";
 import { FinalWinnerDto } from "../types/final-winner.dto";
-import { TeamStandingsDocument } from "../documents/team-standings.document";
+import { ModifyLeagueDto } from "../types/modify-league.dto";
 
 @JsonController('/api')
 @Service()
@@ -70,23 +70,25 @@ export class LeagueController {
     return await this.leagueService.saveFinalWinner(Utils.getUserFromToken(authorization), body);
   }
 
-  @Get('/league/get-teams-standings')
-  public async getTeamStandings(
-  ): Promise<TeamStandingsDocument | ApiResponseMessage> {
-    return await this.leagueService.getTeamStandings();
-  }
-
   @Post('/league/evaluate')
   public async evaluate(
-    @HeaderParam('authorization') authorization: string,
+    @HeaderParam('authorization') authorization: string
   ): Promise<ApiResponseMessage> {
     return await this.leagueService.evaluate(Utils.getUserFromToken(authorization));
   }
 
   @Post('/league/create-new-season')
   public async createNewSeason(
-    @HeaderParam('authorization') authorization: string,
+    @HeaderParam('authorization') authorization: string
   ): Promise<LeagueDto | ApiResponseMessage> {
     return await this.leagueService.createNewSeason(Utils.getUserFromToken(authorization).isAdmin);
+  }
+
+  @Post('/league/modify-league')
+  public async modifyLeague(
+    @HeaderParam('authorization') authorization: string,
+    @Body() body: ModifyLeagueDto
+  ): Promise<LeagueDto | ApiResponseMessage> {
+    return await this.leagueService.modifyLeague(Utils.getUserFromToken(authorization).id, body);
   }
 }

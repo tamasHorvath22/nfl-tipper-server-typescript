@@ -68,6 +68,7 @@ export class UserService {
   public async login(loginDTO: LoginDTO): Promise<ApiResponseMessage | { token: string }> {
     const user = await this.userRepositoryService.getUserByUsername(loginDTO.username);
     if (!user) {
+      console.log(1)
       return ApiResponseMessage.WRONG_USERNAME_OR_PASSWORD;
     }
     if (!user.isEmailConfirmed) {
@@ -78,10 +79,12 @@ export class UserService {
       if (authenticated) {
         return Utils.signToken(user);
       } else {
+        console.log(2)
         return ApiResponseMessage.WRONG_USERNAME_OR_PASSWORD;
       }
     } catch (err) {
       console.error(err);
+      console.log(3)
       return ApiResponseMessage.AUTHENTICATION_ERROR;
     }
   }
