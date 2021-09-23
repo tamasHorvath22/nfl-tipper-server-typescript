@@ -205,7 +205,7 @@ export class UserService {
   private decryptPassword(hash: string): string {
     console.log(ConfigService.getEnvValue('PASSWORD_SECRET_KEY'))
     const bytes = CryptoJS.AES.decrypt(hash, ConfigService.getEnvValue('PASSWORD_SECRET_KEY'));
-    return bytes.toString(CryptoJS.enc.Utf8);
+    return bytes.toString();
   }
 
 }
