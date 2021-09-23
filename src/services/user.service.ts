@@ -68,23 +68,22 @@ export class UserService {
   public async login(loginDTO: LoginDTO): Promise<ApiResponseMessage | { token: string }> {
     const user = await this.userRepositoryService.getUserByUsername(loginDTO.username);
     if (!user) {
-      console.log(1)
       return ApiResponseMessage.WRONG_USERNAME_OR_PASSWORD;
     }
     if (!user.isEmailConfirmed) {
       return ApiResponseMessage.EMAIL_NOT_CONFIRMED;
     }
     try {
+      console.log(loginDTO.password)
+      console.log(this.decryptPassword(loginDTO.password))
       const authenticated = await bcrypt.compare(this.decryptPassword(loginDTO.password), user.password);
       if (authenticated) {
         return Utils.signToken(user);
       } else {
-        console.log(2)
         return ApiResponseMessage.WRONG_USERNAME_OR_PASSWORD;
       }
     } catch (err) {
       console.error(err);
-      console.log(3)
       return ApiResponseMessage.AUTHENTICATION_ERROR;
     }
   }
