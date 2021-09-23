@@ -66,6 +66,7 @@ export class UserService {
   }
 
   public async login(loginDTO: LoginDTO): Promise<ApiResponseMessage | { token: string }> {
+    console.log('login?????')
     const user = await this.userRepositoryService.getUserByUsername(loginDTO.username);
     if (!user) {
       return ApiResponseMessage.WRONG_USERNAME_OR_PASSWORD;
@@ -202,6 +203,7 @@ export class UserService {
   }
 
   private decryptPassword(hash: string): string {
+    console.log(ConfigService.getEnvValue('PASSWORD_SECRET_KEY'))
     const bytes = CryptoJS.AES.decrypt(hash, ConfigService.getEnvValue('PASSWORD_SECRET_KEY'));
     return bytes.toString(CryptoJS.enc.Utf8);
   }
