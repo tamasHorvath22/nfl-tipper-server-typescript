@@ -145,10 +145,15 @@ export class LeagueService {
 			return ApiResponseMessage.NOT_FOUND;
 		}
 		if (!league.players.some(player => player.id === tokenUser.id)) {
+			console.log(league.players)
+			console.log(tokenUser)
+			console.log(1)
 			return ApiResponseMessage.DATABASE_ERROR;
 		}
 		const weekTracker = await this.weekTrackerRepository.getTracker();
 		if (!weekTracker) {
+			console.log(weekTracker)
+			console.log(2)
 			return ApiResponseMessage.DATABASE_ERROR;
 		}
 

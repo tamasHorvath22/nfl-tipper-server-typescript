@@ -66,7 +66,6 @@ export class UserService {
   }
 
   public async login(loginDTO: LoginDTO): Promise<ApiResponseMessage | { token: string }> {
-    console.log('login?????')
     const user = await this.userRepositoryService.getUserByUsername(loginDTO.username);
     if (!user) {
       return ApiResponseMessage.WRONG_USERNAME_OR_PASSWORD;
@@ -75,8 +74,6 @@ export class UserService {
       return ApiResponseMessage.EMAIL_NOT_CONFIRMED;
     }
     try {
-      console.log(loginDTO.password)
-      console.log(this.decryptPassword(loginDTO.password))
       const authenticated = await bcrypt.compare(this.decryptPassword(loginDTO.password), user.password);
       if (authenticated) {
         return Utils.signToken(user);
@@ -203,7 +200,6 @@ export class UserService {
   }
 
   private decryptPassword(hash: string): string {
-    console.log(ConfigService.getEnvValue('PASSWORD_SECRET_KEY'))
     const bytes = CryptoJS.AES.decrypt(hash, ConfigService.getEnvValue('PASSWORD_SECRET_KEY'));
     return bytes.toString(CryptoJS.enc.Utf8);
   }
