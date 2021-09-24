@@ -28,12 +28,19 @@ export class Utils {
 
 	public static mapToLeagueDto(league: LeagueDocument, teamStandings: TeamStandingsDto): LeagueDto {
 		return {
-			players: league.players,
+			players: league.players.map(player => ({
+				...player,
+				id: player.id.toString()
+			})),
 			invitations: league.invitations,
 			seasons: league.seasons.map(season => {
 				return {
 					...season,
 					id: season._id.toString(),
+					standings: season.standings.map(standing => ({
+						...standing,
+						id: standing.id.toString(),
+					})),
 					weeks: season.weeks.map(week => {
 						return {
 							...week,
@@ -41,7 +48,11 @@ export class Utils {
 							games: week.games.map(game => {
 								return {
 									...game,
-									id: game._id.toString()
+									id: game._id.toString(),
+									bets: game.bets.map(bet => ({
+										...bet,
+										id: bet.id.toString()
+									}))
 								}
 							})
 						}
