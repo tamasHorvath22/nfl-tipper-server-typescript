@@ -77,7 +77,7 @@ export class LeagueService {
 		}
 
 		const userId = invitedUser._id.toString();
-		if (league.players.find(user => user.id === userId)) {
+		if (league.players.find(user => user.id.toString() === userId)) {
 			return ApiResponseMessage.USER_ALREADY_IN_LEAGUE;
 		}
 
@@ -144,7 +144,7 @@ export class LeagueService {
 		if (!league) {
 			return ApiResponseMessage.NOT_FOUND;
 		}
-		if (!league.players.some(player => player.id === tokenUser.id || player.id.toString() === tokenUser.id)) {
+		if (!league.players.some(player => player.id.toString() === tokenUser.id)) {
 			return ApiResponseMessage.DATABASE_ERROR;
 		}
 		const weekTracker = await this.weekTrackerRepository.getTracker();
@@ -200,7 +200,7 @@ export class LeagueService {
 		if (!league) {
 			return ApiResponseMessage.LEAGUES_NOT_FOUND;
 		}
-		if (!league.players.some(player => player.id === tokenUser.id)) {
+		if (!league.players.some(player => player.id.toString() === tokenUser.id)) {
 			return ApiResponseMessage.DATABASE_ERROR;
 		}
 
@@ -231,7 +231,7 @@ export class LeagueService {
 			const resultObject = {};
 			for (const player of league.players) {
 				// @ts-ignore
-				resultObject[player.id] = 0;
+				resultObject[player.id.toString()] = 0;
 			}
 
 			const currentSeason = league.seasons.find(season => season.year === weekResults.year);
@@ -239,7 +239,7 @@ export class LeagueService {
 			const evaluateWeekResults = this.evaluateWeek(currWeek.games, weekResults.week.games, resultObject);
 
 			for (const standing of currentSeason.standings) {
-				standing.score += evaluateWeekResults[standing.id];
+				standing.score += evaluateWeekResults[standing.id.toString()];
 			}
 
 			isWeekOver = !currWeek.games.some(game => game.isOpen);
@@ -308,7 +308,7 @@ export class LeagueService {
 			const finalWinnerObj = {};
 			for (const player of league.players) {
 				// @ts-ignore
-				finalWinnerObj[player.id] = null;
+				finalWinnerObj[player.id.toString()] = null;
 			}
 
 			const newSeason = new SeasonModel({
@@ -317,7 +317,7 @@ export class LeagueService {
 				numberOfSuperBowl: updatedWeekTracker.year - 1965,
 				weeks: [],
 				standings: league.players.map(player => {
-					return { id: player.id, name: player.name, score: 0 }
+					return { id: player.id.toString(), name: player.name, score: 0 }
 				}),
 				finalWinner: finalWinnerObj,
 				isOpen: true
@@ -392,7 +392,7 @@ export class LeagueService {
 		const hitWinnerPoints = 30;
 		for (const userId of Object.keys(season.finalWinner)) {
 			if (season.finalWinner[userId] === winner) {
-				const userStanding = season.standings.find(standing => standing.id === userId);
+				const userStanding = season.standings.find(standing => standing.id.toString() === userId);
 				if (userStanding) {
 					userStanding.score += hitWinnerPoints;
 				}
@@ -455,13 +455,13 @@ export class LeagueService {
 				}
 				if (gameToEvaluate.winnerValue === BetType.TIE) {
 					if (bet.bet === BetType.HOME_0_3 || bet.bet === BetType.AWAY_0_3) {
-						resultObject[bet.id] += intervalPoints;
+						resultObject[bet.id.toString()] += intervalPoints;
 					}
 				} else {
 					if (bet.bet === gameToEvaluate.winnerValue) {
-						resultObject[bet.id] += intervalPoints;
+						resultObject[bet.id.toString()] += intervalPoints;
 					} else if (bet.bet.startsWith(gameToEvaluate.winnerValue.substring(0, 4))) {
-						resultObject[bet.id] += outcomePoints;
+						resultObject[bet.id.toString()] += outcomePoints;
 					}
 				}
 			}
@@ -519,7 +519,7 @@ export class LeagueService {
 			if (!bet) {
 				continue;
 			}
-			const userBet = game.bets.find(bet => bet.id === userId);
+			const userBet = game.bets.find(bet => bet.id.toString() === userId);
 			if (Object.values(BetType).includes(bet.bet)) {
 				userBet.bet = bet.bet;
 			}
