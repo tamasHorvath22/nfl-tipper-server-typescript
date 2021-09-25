@@ -161,10 +161,7 @@ export class LeagueService {
 			currentSeason.finalWinner = { [userId]: currentSeason.finalWinner[userId] };
 		}
 
-		const teamStandings = await this.leagueRepository.findStandingsByYear(weekTracker.year);
-		if (!teamStandings) {
-			teamStandings.teams = null;
-		}
+		const teamStandings = await this.getTeamStandingsData();
 
 		const now = new Date().getTime();
 		for (const game of currentWeek.games) {
@@ -173,7 +170,7 @@ export class LeagueService {
 			}
 			game.bets = game.bets.filter(bet => bet.id.toString() === userId);
 		}
-		return Utils.mapToLeagueDto(league, teamStandings.teams);
+		return Utils.mapToLeagueDto(league, teamStandings);
 	}
 
 	public async saveWeekBets(tokenUser: UserDTO, betDto: BetDto) {
@@ -193,6 +190,27 @@ export class LeagueService {
 		}
 		const isSaveSuccess = await this.leagueRepository.updateLeagues(leagues);
 		return isSaveSuccess ? ApiResponseMessage.BET_SAVE_SUCCESS : ApiResponseMessage.BET_SAVE_FAIL;
+	}
+
+	public async getTeamStandingsData(): Promise<any> {
+		const standings = {};
+		const rawData = await this.dataService.getTeamStandingsData();
+		if (!rawData) {
+			return null;
+		}
+
+		for (const conference of rawData.data.conferences) {
+			for (const division of conference.divisions) {
+				for (const team of division.teams) {
+					standings[team.alias] = {
+						win: team.wins,
+						loss: team.losses,
+						tie: team.ties
+					}
+				}
+			}
+		}
+		return standings;
 	}
 
 	public async saveFinalWinner(tokenUser: UserDTO, finalWinnerDto: FinalWinnerDto) {
@@ -251,8 +269,7 @@ export class LeagueService {
 			}
 		}
 
-		await this.updateTeamStandings();
-
+		// await this.updateTeamStandings();
 		// TODO do we need this delay?
 		// await Utils.waitFor(1500);
 
@@ -352,17 +369,10 @@ export class LeagueService {
 		const saveResponse = await this.leagueRepository.updateLeagues([league]);
 		if (saveResponse) {
 
-			let teamStandings = { teams: null }
-			const weekTracker = await this.weekTrackerRepository.getTracker();
-			if (!weekTracker) {
-				teamStandings = await this.leagueRepository.findStandingsByYear(weekTracker.year);
-				if (!teamStandings) {
-					teamStandings = { teams: null }
-				}
-			}
+			const teamStandings = await this.getTeamStandingsData();
 
 			const league = saveResponse.find(league => league.id === data.leagueId);
-			return Utils.mapToLeagueDto(league, teamStandings.teams);
+			return Utils.mapToLeagueDto(league, teamStandings);
 		}
 		return ApiResponseMessage.DATABASE_ERROR;
 	}
@@ -474,36 +484,6 @@ export class LeagueService {
 
 	private isSuperBowlWeek(week: any): boolean {
 		return week.type === WeekType.POSTSEASON && week.week.sequence === 4;
-	}
-
-	private async updateTeamStandings(): Promise<boolean> {
-		const data = await this.dataService.getTeamStandingsData();
-		if (!data) {
-			return false;
-		}
-
-		let standings = await this.leagueRepository.findStandingsByYear(data.data.season.year);
-		if (!standings) {
-			standings = new TeamStandingsModel({
-				year: data.data.season.year,
-				teams: {}
-			});
-		}
-
-		for (const conference of data.data.conferences) {
-			for (const division of conference.divisions) {
-				for (const team of division.teams) {
-					// @ts-ignore
-					standings.teams[team.alias] = {
-						win: team.wins,
-						loss: team.losses,
-						tie: team.ties
-					}
-				}
-			}
-		}
-
-		return await this.leagueRepository.saveTeamStandings(standings);
 	}
 
 	private saveBetsForOneLeague(userId: string, league: LeagueDocument, betsDto: BetDto, currentYear: number) {

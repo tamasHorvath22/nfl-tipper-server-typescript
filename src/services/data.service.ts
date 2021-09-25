@@ -6,13 +6,15 @@ import axios from 'axios';
 @Service()
 export class DataService {
 
-	private baseUrl = 'https://api.sportradar.us/nfl/official/trial/v5/en';
+	private baseUrl = 'https://api.sportradar.us/nfl/official/trial';
+	private v5 = '/v5/en';
+	private v6 = '/v6/en'
 
 	public async getWeekData(weekTracker: WeekTrackerDocument) {
 		const gamesUrl = '/games/';
 		const apiKeyPart = '/schedule.json?api_key='
 
-		const base = `${this.baseUrl}${gamesUrl}`;
+		const base = `${this.baseUrl}${this.v5}${gamesUrl}`;
 		const weekUrl = `${weekTracker.year}/${weekTracker.regOrPst}/${weekTracker.week}`;
 		const path = `${base}${weekUrl}${apiKeyPart}${ConfigService.getEnvValue('SPORTRADAR_KEY')}`
 		try {
@@ -25,8 +27,8 @@ export class DataService {
 	}
 
 	public async getTeamStandingsData(): Promise<any> {
-		const standingUrl = '/seasons/2020/standings.json?api_key=';
-		const path = `${this.baseUrl}${standingUrl}${ConfigService.getEnvValue('SPORTRADAR_KEY')}`;
+		const standingUrl = '/seasons/2021/REG/standings/season.json?api_key=';
+		const path = `${this.baseUrl}${this.v6}${standingUrl}${ConfigService.getEnvValue('SPORTRADAR_KEY')}`;
 
 		try {
 			return await axios.get(path);
