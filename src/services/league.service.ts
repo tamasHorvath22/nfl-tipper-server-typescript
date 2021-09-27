@@ -6,7 +6,6 @@ import {WeekTrackerRepository} from "../repositories/week-tracker.repository";
 import {UserDocument} from "../documents/user.document";
 import LeagueModel from '../mongoose-models/league.model';
 import SeasonModel from '../mongoose-models/season.model';
-import TeamStandingsModel from '../mongoose-models/team-standings.model';
 import {LeagueRepositoryService} from "../repositories/league.repository";
 import {GameDocument, LeagueDocument, SeasonDocument} from "../documents/league.document";
 import {DataService} from "./data.service";
@@ -23,7 +22,6 @@ import {UserDTO} from "../types/user-dto";
 import {BetDto} from "../types/bet.dto";
 import {FinalWinnerDto} from "../types/final-winner.dto";
 import {BetType} from "../constants/bet-types";
-import {TeamStandingsDocument} from "../documents/team-standings.document";
 import {GameOutcome} from "../constants/game-outcome";
 import {ModifyLeagueDto} from "../types/modify-league.dto";
 
@@ -113,15 +111,20 @@ export class LeagueService {
 
 		// remove invitation from user
 		user.invitations.splice(user.invitations.findIndex(elem => elem.leagueId.toString() === leagueId), 1);
+
 		// add league to user's league
 		user.leagues.push({ leagueId: leagueId, name: league.name });
+
 		// remove invitation from league
 		league.invitations.splice(league.invitations.indexOf(userId));
+
 		// add player to league
 		league.players.push({ id: userId, name: user.username, avatar: user.avatarUrl });
 		const currentSeason = league.seasons.find(season => season.isOpen);
+
 		// user added to season final winner object
 		currentSeason.finalWinner[userId] = null;
+
 		// add user to season standings
 		currentSeason.standings.push({ id: userId, name: user.username, score: 0 })
 		if (currentSeason.weeks.length) {
@@ -131,6 +134,7 @@ export class LeagueService {
 				game.bets.push({ id: userId, name: user.username, bet: null });
 			})
 		}
+
 		const isSaveSuccess = await this.leagueRepository.saveLeagueAndUser(user, league);
 		return isSaveSuccess ? Utils.signToken(user) : ApiResponseMessage.DATABASE_ERROR;
 	}
@@ -162,6 +166,7 @@ export class LeagueService {
 		}
 
 		const teamStandings = await this.getTeamStandingsData();
+		await Utils.waitFor(1500);
 
 		const now = new Date().getTime();
 		for (const game of currentWeek.games) {
@@ -248,7 +253,6 @@ export class LeagueService {
 		for (const league of leagues) {
 			const resultObject = {};
 			for (const player of league.players) {
-				// @ts-ignore
 				resultObject[player.id.toString()] = 0;
 			}
 
@@ -269,10 +273,6 @@ export class LeagueService {
 			}
 		}
 
-		// await this.updateTeamStandings();
-		// TODO do we need this delay?
-		// await Utils.waitFor(1500);
-
 		if (!isWeekOver) {
 			const isSaveSuccess = await this.leagueRepository.updateLeagues(leagues);
 			if (!isSaveSuccess) {
@@ -286,9 +286,6 @@ export class LeagueService {
 		if (isThisSuperBowlWeek) {
 			return ApiResponseMessage.EVALUATION_SUCCESS;
 		}
-
-		// TODO do we need this delay?
-		// await Utils.waitFor(1500);
 
 		const isCreateSuccess = await this.createNewWeekForLeagues(leagues, freshWeekTracker);
 		if (!isCreateSuccess) {
@@ -370,6 +367,7 @@ export class LeagueService {
 		if (saveResponse) {
 
 			const teamStandings = await this.getTeamStandingsData();
+			await Utils.waitFor(1500);
 
 			const league = saveResponse.find(league => league.id === data.leagueId);
 			return Utils.mapToLeagueDto(league, teamStandings);

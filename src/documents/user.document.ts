@@ -1,6 +1,7 @@
 import { BaseDocument } from "./base.document";
 
 export interface UserDocument extends BaseDocument {
+  nickname: string;
   username: string;
   password: string;
   email: string;

@@ -4,8 +4,9 @@ import { DocumentName } from '../constants/document-names';
 import bcrypt from 'bcryptjs';
 
 const userSchema = new Schema<UserDocument>({
-  username: { type : String, required: true, unique: true, dropDups: true },
+  username: { type: String, required: true, unique: true, dropDups: true },
   password: String,
+  nickname: String,
   email: { type : String, unique: true, required: true },
   avatarUrl: String,
   isEmailConfirmed: Boolean,

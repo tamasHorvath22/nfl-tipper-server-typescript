@@ -33,6 +33,19 @@ export class UserRepositoryService {
     }
   }
 
+  public async saveGoogleUser(user: UserDocument): Promise<UserDocument> {
+    const transaction = new Transaction(true);
+    transaction.insert(DocumentName.USER, user);
+
+    try {
+      const result = await transaction.run();
+      return result ? result[0] : null;
+    } catch (err)  {
+      transaction.rollback();
+      return null;
+    }
+  }
+
   public async getUserByUsername(username: string): Promise<null | UserDocument> {
     try {
       const user = await userModel.findOne({ username: username }).exec();
@@ -47,6 +60,16 @@ export class UserRepositoryService {
     try {
       const user = await userModel.findById(id).exec();
       return user ? user : null;
+    } catch(err) {
+      console.error(err);
+      return null;
+    }
+  }
+
+  public async getUserByNickname(nickname: string): Promise<null | UserDocument> {
+    try {
+      const user = await userModel.findOne({ nickname: nickname }).exec();
+      return user ? user : undefined;
     } catch(err) {
       console.error(err);
       return null;

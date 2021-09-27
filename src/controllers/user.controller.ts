@@ -7,6 +7,7 @@ import { RegisterDTO } from '../types/register-dto';
 import { NewPasswordDTO } from '../types/new-password-dto';
 import { ApiResponseMessage } from '../constants/api-response-message';
 import { Utils } from "../utils";
+import {GoogleAuthDto} from "../types/google-auth.dto";
 
 @JsonController()
 @Service()
@@ -17,6 +18,11 @@ export class UserController {
   @Post('/register')
   public async register(@Body() body: RegisterDTO): Promise<ApiResponseMessage> {
     return await this.userService.register(body);
+  }
+
+  @Post('/google-auth')
+  public async googleAuth(@Body() body: GoogleAuthDto): Promise<{ token: string }> {
+    return await this.userService.googleAuth(body);
   }
 
   @Post('/login')

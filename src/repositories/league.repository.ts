@@ -123,33 +123,6 @@ export class LeagueRepositoryService {
     }
   }
 
-  // public async findStandingsByYear(year: number): Promise<TeamStandingsDocument> {
-  //   try {
-  //     const standings = await TeamStandingsModel.findOne({ year: year });
-  //     if (standings) {
-  //       return JSON.parse(JSON.stringify(standings));
-  //     }
-  //     return null;
-  //   } catch(err) {
-  //     console.error(err);
-  //     return null
-  //   }
-  // }
-  //
-  // public async saveTeamStandings(standings: TeamStandingsDocument): Promise<boolean> {
-  //   const transaction = new Transaction(true);
-  //   transaction.insert(DocumentName.TEAM_STANDINGS, standings);
-  //
-  //   try {
-  //     await transaction.run();
-  //     return true;
-  //   } catch (err)  {
-  //     console.error(err);
-  //     transaction.rollback();
-  //     return false;
-  //   }
-  // }
-
   public async getAllLeagues(): Promise<LeagueDocument[]> {
     try {
       const leagues = await LeagueModel.find({});

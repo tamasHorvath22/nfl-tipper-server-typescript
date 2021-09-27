@@ -18,7 +18,7 @@ export class LeagueController {
   constructor(private leagueService: LeagueService) {}
 
   @Post('/league')
-  public async register(
+  public async createLeague(
     @HeaderParam('authorization') authorization: string,
     @Body() body: CreateLeagueDTO
   ): Promise<{ token: string } | ApiResponseMessage> {

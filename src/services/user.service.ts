@@ -18,6 +18,7 @@ import {NewPasswordDTO} from '../types/new-password-dto';
 import {ChangePasswordDTO} from '../types/change-password.dto';
 import {UserDTO} from '../types/user-dto';
 import {Utils} from "../utils";
+import {GoogleAuthDto} from "../types/google-auth.dto";
 
 
 @Service()
@@ -28,6 +29,31 @@ export class UserService {
     private leagueRepositoryService: LeagueRepositoryService,
     private mailService: MailService
   ) {}
+
+  public async googleAuth(googleAuthDto: GoogleAuthDto): Promise<{ token: string }> {
+    const user = await this.userRepositoryService.getUserByNickname(googleAuthDto.nickname);
+    if (user === undefined) {
+      const newGoogleUser = new UserModel({
+        username: googleAuthDto.username,
+        nickname: googleAuthDto.nickname,
+        password: `${Math.floor(Math.random() * 9999999)}`,
+        email: googleAuthDto.email,
+        leagues: [],
+        invitations: [],
+        avatarUrl: null,
+        isEmailConfirmed: true,
+        isAdmin: false
+      });
+
+      const savedUser = await this.userRepositoryService.saveGoogleUser(newGoogleUser);
+      if (savedUser) {
+        return Utils.signToken(savedUser);
+      }
+    } else if (user === null) {
+      // TODO error handling
+    }
+    return Utils.signToken(user);
+  }
 
   public async register(registerDto: RegisterDTO): Promise<ApiResponseMessage> {
     if (registerDto.username[0] === '$') {
