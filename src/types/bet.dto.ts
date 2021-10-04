@@ -1,4 +1,4 @@
-import { BetType } from "../constants/bet-types";
+import { BetType } from '../constants/bet-types';
 
 export interface BetDto {
 	leagueId: string;

@@ -4,11 +4,7 @@ export enum DocumentName {
   SEASON = 'Season',
   WEEK = 'Week',
   GAME = 'Game',
-  EMAIL_CONFIRM = 'ConfirmEmail',
-  FORGOT_PASSWORD = 'ForgotPassword',
   BET = 'Bet',
   WEEK_TRACKER = 'WeekTracker',
-  BACKUP = 'Backup',
-  TEAM_STANDINGS = 'TeamStandings',
-  ADD_NEW_PASSWORD = 'AddNewPasword'
+  BACKUP = 'Backup'
 }

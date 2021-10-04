@@ -4,7 +4,6 @@ import { TeamAlias } from "../constants/team-alias";
 import { GameStatus } from "../constants/game-status";
 import { GameOutcome } from "../constants/game-outcome";
 
-
 export interface LeagueDocument extends BaseDocument {
   players: Player[];
   invitations: string[];
