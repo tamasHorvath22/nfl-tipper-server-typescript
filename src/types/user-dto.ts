@@ -1,4 +1,5 @@
-import {UserInvitation} from '../documents/user.document';
+import { UserInvitation } from '../documents/user.document';
+
 export interface UserDTO {
   id: string;
   username: string;

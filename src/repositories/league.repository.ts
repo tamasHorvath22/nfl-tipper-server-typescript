@@ -2,12 +2,10 @@ import { LeagueDocument } from '../documents/league.document';
 import { Service } from "typedi";
 import mongoose from 'mongoose';
 import LeagueModel from '../mongoose-models/league.model';
-import TeamStandingsModel from '../mongoose-models/team-standings.model';
 import { UserDocument } from "../documents/user.document";
 import Transaction from 'mongoose-transactions-typescript';
 import { DocumentName } from '../constants/document-names';
 import { LeagueDataDto } from "../types/league-data.dto";
-import { TeamStandingsDocument } from "../documents/team-standings.document";
 import { WeekTrackerDocument } from "../documents/week-tracker.document";
 
 @Service()

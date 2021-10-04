@@ -1,11 +1,11 @@
-import jwtDecode from "jwt-decode";
-import { UserDocument } from "./documents/user.document";
-import { UserDTO } from "./types/user-dto";
-import { LeagueDocument } from "./documents/league.document";
-import { LeagueDto } from "./types/league.dto";
-import * as jwt from "jsonwebtoken";
-import { ConfigService } from "./services/config.service";
-import { TeamStandingsDto } from "./types/team-standings.dto";
+import jwtDecode from 'jwt-decode';
+import { UserDocument } from './documents/user.document';
+import { UserDTO } from './types/user-dto';
+import { LeagueDocument } from './documents/league.document';
+import { LeagueDto } from './types/league.dto';
+import * as jwt from 'jsonwebtoken';
+import { ConfigService } from './services/config.service';
+import { TeamStandingsDto } from './types/team-standings.dto';
 
 export class Utils {
 
