@@ -281,6 +281,7 @@ export class LeagueService {
 			return ApiResponseMessage.EVALUATION_SUCCESS;
 		}
 
+		await Utils.waitFor(1100);
 		const freshWeekTracker = this.stepWeekTracker(weekTracker);
 
 		if (isThisSuperBowlWeek) {
