@@ -1,29 +1,29 @@
-import {Service} from "typedi";
-import {ApiResponseMessage} from '../constants/api-response-message';
-import {CreateLeagueDTO} from "../types/create-league.dto";
-import {UserRepositoryService} from "../repositories/user.repository";
-import {WeekTrackerRepository} from "../repositories/week-tracker.repository";
-import {UserDocument} from "../documents/user.document";
+import { Service } from 'typedi';
+import { ApiResponseMessage } from '../constants/api-response-message';
+import { CreateLeagueDTO } from '../types/create-league.dto';
+import { UserRepositoryService } from '../repositories/user.repository';
+import { WeekTrackerRepository } from '../repositories/week-tracker.repository';
+import { UserDocument } from '../documents/user.document';
 import LeagueModel from '../mongoose-models/league.model';
 import SeasonModel from '../mongoose-models/season.model';
-import {LeagueRepositoryService} from "../repositories/league.repository";
-import {GameDocument, LeagueDocument, SeasonDocument} from "../documents/league.document";
-import {DataService} from "./data.service";
-import {WeekTrackerDocument} from "../documents/week-tracker.document";
+import { LeagueRepositoryService } from '../repositories/league.repository';
+import { GameDocument, LeagueDocument, SeasonDocument } from '../documents/league.document';
+import { DataService } from './data.service';
+import { WeekTrackerDocument } from '../documents/week-tracker.document';
 import WeekModel from '../mongoose-models/week.model';
 import GameModel from '../mongoose-models/game.model';
-import {WeekType} from "../constants/week-type";
-import {GameStatus} from "../constants/game-status";
-import {Utils} from "../utils";
-import {SendInvitationDto} from "../types/send-invitation.dto";
-import {LeagueDataDto} from "../types/league-data.dto";
-import {LeagueDto} from "../types/league.dto";
-import {UserDTO} from "../types/user-dto";
-import {BetDto} from "../types/bet.dto";
-import {FinalWinnerDto} from "../types/final-winner.dto";
-import {BetType} from "../constants/bet-types";
-import {GameOutcome} from "../constants/game-outcome";
-import {ModifyLeagueDto} from "../types/modify-league.dto";
+import { WeekType } from '../constants/week-type';
+import { GameStatus } from '../constants/game-status';
+import { Utils } from '../utils';
+import { SendInvitationDto } from '../types/send-invitation.dto';
+import { LeagueDataDto } from '../types/league-data.dto';
+import { LeagueDto } from '../types/league.dto';
+import { UserDTO } from '../types/user-dto';
+import { BetDto } from '../types/bet.dto';
+import { FinalWinnerDto } from '../types/final-winner.dto';
+import { BetType } from '../constants/bet-types';
+import { GameOutcome } from '../constants/game-outcome';
+import { ModifyLeagueDto } from '../types/modify-league.dto';
 
 @Service()
 export class LeagueService {
@@ -161,7 +161,7 @@ export class LeagueService {
 		const firstGameStart = new Date(currentWeek.games.sort((a, b) => a.startTime > b.startTime ? 1 : -1)[0].startTime).getTime();
 
 		const userId = tokenUser.id.toString();
-		if (weekTracker.week === 1 && new Date().getTime() < firstGameStart) {
+		if (weekTracker.week === 1 && weekTracker.regOrPst === WeekType.REGULAR && new Date().getTime() < firstGameStart) {
 			currentSeason.finalWinner = { [userId]: currentSeason.finalWinner[userId] };
 		}
 
