@@ -1,6 +1,6 @@
-import { BetType } from "../constants/bet-types";
+import { TeamAlias } from '../constants/team-alias';
 
 export interface FinalWinnerDto {
 	leagueId: string;
-	finalWinner: BetType
+	finalWinner: TeamAlias
 }
