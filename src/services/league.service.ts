@@ -381,6 +381,7 @@ export class LeagueService {
 			weekTracker.regOrPst = WeekType.REGULAR;
 			weekTracker.week = 1;
 			weekTracker.year++;
+			return weekTracker;
 		}
 
 		if (weekTracker.regOrPst === WeekType.REGULAR && weekTracker.week === 18) {
