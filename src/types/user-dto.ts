@@ -5,7 +5,6 @@ export interface UserDTO {
   username: string;
   email: string;
   avatarUrl: string;
-  isEmailConfirmed: boolean;
   isAdmin: boolean;
   leagues: string[];
   invitations: UserInvitation[];

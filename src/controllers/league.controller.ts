@@ -21,7 +21,7 @@ export class LeagueController {
   public async createLeague(
     @HeaderParam('authorization') authorization: string,
     @Body() body: CreateLeagueDTO
-  ): Promise<{ token: string } | ApiResponseMessage> {
+  ): Promise<{ token: string }> {
     return await this.leagueService.createLeague(Utils.getUserFromToken(authorization), body);
   }
 
@@ -37,20 +37,22 @@ export class LeagueController {
   public async acceptInvitation(
     @HeaderParam('authorization') authorization: string,
     @Body() body: { leagueId: string }
-  ): Promise<{ token: string } | ApiResponseMessage> {
+  ): Promise<boolean> {
     return await this.leagueService.acceptInvitation(Utils.getUserFromToken(authorization), body.leagueId);
   }
 
   @Post('/get-leagues')
-  public async getLeaguesData(@Body() body: { leagueIds: string[] }): Promise<LeagueDataDto[]> {
-    return await this.leagueService.getLeaguesData(body.leagueIds);
+  public async getLeaguesData(
+    @HeaderParam('authorization') authorization: string
+  ): Promise<LeagueDataDto[]> {
+    return await this.leagueService.getLeaguesData(Utils.getUserFromToken(authorization));
   }
 
   @Post('/get-league')
   public async getLeague(
     @HeaderParam('authorization') authorization: string,
     @Body() body: { leagueId: string }
-  ): Promise<LeagueDto | ApiResponseMessage> {
+  ): Promise<LeagueDto> {
     return await this.leagueService.getLeague(Utils.getUserFromToken(authorization), body.leagueId);
   }
 
@@ -66,7 +68,7 @@ export class LeagueController {
   public async saveFinalWinner(
     @HeaderParam('authorization') authorization: string,
     @Body() body: FinalWinnerDto
-  ): Promise<LeagueDto | ApiResponseMessage> {
+  ): Promise<LeagueDto> {
     return await this.leagueService.saveFinalWinner(Utils.getUserFromToken(authorization), body);
   }
 
@@ -88,7 +90,15 @@ export class LeagueController {
   public async modifyLeague(
     @HeaderParam('authorization') authorization: string,
     @Body() body: ModifyLeagueDto
-  ): Promise<LeagueDto | ApiResponseMessage> {
+  ): Promise<LeagueDto> {
     return await this.leagueService.modifyLeague(Utils.getUserFromToken(authorization).id, body);
+  }
+
+  @Post('/league/delete-league')
+  public async deleteLeague(
+    @HeaderParam('authorization') authorization: string,
+    @Body() body: { leagueId: string }
+  ): Promise<boolean> {
+    return await this.leagueService.deleteLeague(Utils.getUserFromToken(authorization).id, body.leagueId);
   }
 }

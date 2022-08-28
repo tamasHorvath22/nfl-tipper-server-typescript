@@ -1,4 +1,4 @@
 export interface SendInvitationDto {
 	leagueId: string,
-	invitedEmail: string
+	email: string
 }

@@ -6,9 +6,12 @@ import UserModel from '../mongoose-models/user.model';
 import {UserDTO} from '../types/user-dto';
 import {Utils} from '../utils';
 import {GoogleAuthDto} from '../types/google-auth.dto';
+import { HttpError } from 'routing-controllers';
 
 @Service()
 export class UserService {
+
+  private readonly serverErrorCode = 500;
 
   constructor(
     private userRepositoryService: UserRepositoryService,
@@ -16,7 +19,7 @@ export class UserService {
   ) {}
 
   public async googleAuth(googleAuthDto: GoogleAuthDto): Promise<{ token: string }> {
-    const user = await this.userRepositoryService.getUserByNickname(googleAuthDto.nickname);
+    const user = await this.userRepositoryService.getByEmail(googleAuthDto.email);
     if (user === undefined) {
       const newGoogleUser = new UserModel({
         username: googleAuthDto.username,
@@ -40,12 +43,20 @@ export class UserService {
     return Utils.signToken(user);
   }
 
+  public async refreshUserData(tokenUser: UserDTO): Promise<{ token: string }> {
+    const user = await this.userRepositoryService.getUserById(tokenUser.id);
+    if (!user) {
+      throw new HttpError(this.serverErrorCode, ApiResponseMessage.NOT_FOUND);
+    }
+    return Utils.signToken(user);
+  }
+
   public async changeUserData(tokenUser: UserDTO, avatarUrl: string): Promise<ApiResponseMessage | { token: string }> {
     const user = await this.userRepositoryService.getUserById(tokenUser.id);
     if (!user) {
       return ApiResponseMessage.NOT_FOUND;
     }
-    
+
     user.avatarUrl = avatarUrl;
     let leagues;
     if (user.leagues.length) {
@@ -54,7 +65,11 @@ export class UserService {
         return ApiResponseMessage.LEAGUES_NOT_FOUND;
       }
       for (const league of leagues) {
-        league.players.find(player => player.id === user._id.toString()).avatar = user.avatarUrl;
+        const player = league.players.find(player => player.id.toString() === user._id.toString());
+        if (!player) {
+          continue;
+        }
+        player.avatar = user.avatarUrl;
       }
     }
     const result = await this.leagueRepositoryService.changeUserData(user, leagues);

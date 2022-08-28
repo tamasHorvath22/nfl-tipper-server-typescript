@@ -50,4 +50,13 @@ export class UserRepositoryService {
       return null;
     }
   }
+
+  public async getUsersByIds(ids: string[]): Promise<UserDocument[]> {
+    try {
+      return await userModel.find( { _id : { $in : ids } } ).exec();
+    } catch(err) {
+      console.error(err);
+      return null;
+    }
+  }
 }

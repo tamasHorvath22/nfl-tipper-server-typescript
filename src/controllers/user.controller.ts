@@ -23,4 +23,11 @@ export class UserController {
   ): Promise<{ token: string } | ApiResponseMessage> {
     return await this.userService.changeUserData(Utils.getUserFromToken(authorization), body.avatarUrl);
   }
+
+  @Post('/api/user/refresh')
+  public async refreshUserToken(
+    @HeaderParam('authorization') authorization: string
+  ): Promise<{ token: string } | ApiResponseMessage> {
+    return await this.userService.refreshUserData(Utils.getUserFromToken(authorization));
+  }
 }

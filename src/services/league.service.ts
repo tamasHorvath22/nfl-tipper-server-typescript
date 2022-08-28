@@ -24,9 +24,12 @@ import { FinalWinnerDto } from '../types/final-winner.dto';
 import { BetType } from '../constants/bet-types';
 import { GameOutcome } from '../constants/game-outcome';
 import { ModifyLeagueDto } from '../types/modify-league.dto';
+import { HttpError } from 'routing-controllers';
 
 @Service()
 export class LeagueService {
+
+	readonly serverErrorCode = 500;
 
 	constructor(
 		private userRepositoryService: UserRepositoryService,
@@ -38,14 +41,14 @@ export class LeagueService {
 	public async createLeague(
 		tokenUser: UserDTO,
 		leagueData: CreateLeagueDTO
-	): Promise<{ token: string } | ApiResponseMessage>{
+	): Promise<{ token: string }>{
 		if (!leagueData?.name) {
-			return ApiResponseMessage.DATABASE_ERROR;
+			throw new HttpError(this.serverErrorCode, ApiResponseMessage.DATABASE_ERROR);
 		}
 		const user = await this.userRepositoryService.getUserById(tokenUser.id);
 		const weekTracker = await this.weekTrackerRepository.getTracker();
 		if (!user || !weekTracker) {
-			return ApiResponseMessage.DATABASE_ERROR;
+			throw new HttpError(this.serverErrorCode, ApiResponseMessage.DATABASE_ERROR);
 		}
 
 		const league = this.createLeagueDocument(user, leagueData, weekTracker.year);
@@ -54,12 +57,12 @@ export class LeagueService {
 
 		let isLeagueSaveSuccess = await this.leagueRepository.saveLeagueAndUser(user, league);
 		if (!isLeagueSaveSuccess) {
-			return ApiResponseMessage.DATABASE_ERROR;
+			throw new HttpError(this.serverErrorCode, ApiResponseMessage.DATABASE_ERROR);
 		}
 		return Utils.signToken(user);
 	}
 
-	public async sendInvitation(tokenUser: UserDTO, inviteData: SendInvitationDto) {
+	public async sendInvitation(tokenUser: UserDTO, inviteData: SendInvitationDto): Promise<ApiResponseMessage> {
 		const league = await this.leagueRepository.getLeagueById(inviteData.leagueId);
 		if (!league) {
 			return ApiResponseMessage.LEAGUES_NOT_FOUND;
@@ -69,7 +72,7 @@ export class LeagueService {
 			return ApiResponseMessage.NO_INVITATION_RIGHT;
 		}
 
-		const invitedUser = await this.userRepositoryService.getByEmail(inviteData.invitedEmail);
+		const invitedUser = await this.userRepositoryService.getByEmail(inviteData.email);
 		if (!invitedUser) {
 			return ApiResponseMessage.NO_EMAIL_FOUND;
 		}
@@ -93,20 +96,16 @@ export class LeagueService {
 		return isSaveSuccess ? ApiResponseMessage.INVITATION_SUCCESS : ApiResponseMessage.INVITATION_FAIL;
 	}
 
-	public async acceptInvitation(tokenUser: UserDTO, leagueId: string): Promise<{ token: string } | ApiResponseMessage> {
+	public async acceptInvitation(tokenUser: UserDTO, leagueId: string): Promise<boolean> {
 		const league = await this.leagueRepository.getLeagueById(leagueId);
-		if (!league) {
-			return ApiResponseMessage.DATABASE_ERROR;
-		}
-
 		const user = await this.userRepositoryService.getUserById(tokenUser.id);
-		if (!user) {
-			return ApiResponseMessage.DATABASE_ERROR;
+		if (!league || ! user) {
+			throw new HttpError(this.serverErrorCode, ApiResponseMessage.DATABASE_ERROR);
 		}
 
 		const userId = user._id.toString();
 		if (!league.invitations.includes(userId)) {
-			return ApiResponseMessage.DATABASE_ERROR;
+			throw new HttpError(this.serverErrorCode, ApiResponseMessage.DATABASE_ERROR);
 		}
 
 		// remove invitation from user
@@ -136,32 +135,43 @@ export class LeagueService {
 		}
 
 		const isSaveSuccess = await this.leagueRepository.saveLeagueAndUser(user, league);
-		return isSaveSuccess ? Utils.signToken(user) : ApiResponseMessage.DATABASE_ERROR;
+		if (!isSaveSuccess) {
+			throw new HttpError(this.serverErrorCode, ApiResponseMessage.DATABASE_ERROR);
+		}
+		return true;
 	}
 
-	public async getLeaguesData(leagueIds: string[]): Promise<LeagueDataDto[]> {
-		return await this.leagueRepository.getLeaguesData(leagueIds);
+	public async getLeaguesData(tokenUser: UserDTO): Promise<LeagueDataDto[]> {
+		const user = await this.userRepositoryService.getUserById(tokenUser.id);
+		if (!user) {
+			throw new HttpError(this.serverErrorCode, ApiResponseMessage.DATABASE_ERROR);
+		}
+		const leagues = await this.leagueRepository.getLeaguesData(user.leagues.map(league => league.leagueId));
+		if (!leagues) {
+			throw new HttpError(this.serverErrorCode, ApiResponseMessage.DATABASE_ERROR);
+		}
+		return leagues;
 	}
 
-	public async getLeague(tokenUser: UserDTO, leagueId: string): Promise<LeagueDto | ApiResponseMessage> {
+	public async getLeague(tokenUser: UserDTO, leagueId: string): Promise<LeagueDto> {
 		const league = await this.leagueRepository.getLeagueById(leagueId);
 		if (!league) {
-			return ApiResponseMessage.NOT_FOUND;
+			throw new HttpError(this.serverErrorCode, ApiResponseMessage.NOT_FOUND);
 		}
 		if (!league.players.some(player => player.id.toString() === tokenUser.id)) {
-			return ApiResponseMessage.DATABASE_ERROR;
+			throw new HttpError(this.serverErrorCode, ApiResponseMessage.DATABASE_ERROR);
 		}
 		const weekTracker = await this.weekTrackerRepository.getTracker();
 		if (!weekTracker) {
-			return ApiResponseMessage.DATABASE_ERROR;
+			throw new HttpError(this.serverErrorCode, ApiResponseMessage.DATABASE_ERROR);
 		}
 
 		const currentSeason = league.seasons.find(season => season.isOpen);
 		const currentWeek = currentSeason.weeks.find(week => week.isOpen);
-		const firstGameStart = new Date(currentWeek.games.sort((a, b) => a.startTime > b.startTime ? 1 : -1)[0].startTime).getTime();
+		const startOfFirstGame = Math.min(...currentWeek.games.map(g => new Date(g.startTime).getTime()));
 
 		const userId = tokenUser.id.toString();
-		if (weekTracker.week === 1 && weekTracker.regOrPst === WeekType.REGULAR && new Date().getTime() < firstGameStart) {
+		if (weekTracker.week === 1 && weekTracker.regOrPst === WeekType.REGULAR && new Date().getTime() < startOfFirstGame) {
 			currentSeason.finalWinner = { [userId]: currentSeason.finalWinner[userId] };
 		}
 
@@ -218,20 +228,23 @@ export class LeagueService {
 		return standings;
 	}
 
-	public async saveFinalWinner(tokenUser: UserDTO, finalWinnerDto: FinalWinnerDto) {
+	public async saveFinalWinner(tokenUser: UserDTO, finalWinnerDto: FinalWinnerDto): Promise<LeagueDto> {
 		const league = await this.leagueRepository.getLeagueById(finalWinnerDto.leagueId);
 		if (!league) {
-			return ApiResponseMessage.LEAGUES_NOT_FOUND;
+			throw new HttpError(this.serverErrorCode, ApiResponseMessage.LEAGUES_NOT_FOUND);
 		}
 		if (!league.players.some(player => player.id.toString() === tokenUser.id)) {
-			return ApiResponseMessage.DATABASE_ERROR;
+			throw new HttpError(this.serverErrorCode, ApiResponseMessage.DATABASE_ERROR);
 		}
 
 		const currentSeason = league.seasons.find(season => season.isOpen);
 		currentSeason.finalWinner[tokenUser.id] = finalWinnerDto.finalWinner;
 
 		const isSaveSuccess = await this.leagueRepository.updateLeagues([league]);
-		return isSaveSuccess ? ApiResponseMessage.UPDATE_SUCCESS : ApiResponseMessage.UPDATE_FAIL;
+		if (!isSaveSuccess) {
+			throw new HttpError(this.serverErrorCode, ApiResponseMessage.UPDATE_FAIL);
+		}
+		return this.getLeague(tokenUser, finalWinnerDto.leagueId);
 	}
 
 	public async evaluate(tokenUser: UserDTO): Promise<ApiResponseMessage> {
@@ -352,15 +365,12 @@ export class LeagueService {
 		return ApiResponseMessage.CREATE_FAIL;
 	}
 
-	public async modifyLeague(userId: string, data: ModifyLeagueDto) {
+	public async modifyLeague(userId: string, data: ModifyLeagueDto): Promise<LeagueDto> {
 		const league = await this.leagueRepository.getLeagueById(data.leagueId);
-		if (!league) {
-			return ApiResponseMessage.DATABASE_ERROR;
+		if (!league || userId !== league.creator) {
+			throw new HttpError(this.serverErrorCode, ApiResponseMessage.DATABASE_ERROR);
 		}
 
-		if (userId !== league.creator) {
-			return ApiResponseMessage.DATABASE_ERROR;
-		}
 		league.leagueAvatarUrl = data.avatar;
 		league.name = data.name;
 
@@ -373,7 +383,27 @@ export class LeagueService {
 			const league = saveResponse.find(league => league.id === data.leagueId);
 			return Utils.mapToLeagueDto(league, teamStandings);
 		}
-		return ApiResponseMessage.DATABASE_ERROR;
+		throw new HttpError(this.serverErrorCode, ApiResponseMessage.DATABASE_ERROR);
+	}
+
+	public async deleteLeague(userId: string, leagueId: string): Promise<boolean> {
+		const league = await this.leagueRepository.getLeagueById(leagueId);
+		if (!league || userId !== league.creator) {
+			throw new HttpError(this.serverErrorCode, ApiResponseMessage.DATABASE_ERROR);
+		}
+		const players = await this.userRepositoryService.getUsersByIds(league.players.map(p => p.id))
+		if (!players) {
+			throw new HttpError(this.serverErrorCode, ApiResponseMessage.DATABASE_ERROR);
+		}
+		for (const player of players) {
+			player.leagues = player.leagues.filter(l => l.leagueId !== leagueId);
+		}
+
+		const isDeleteSuccess = await this.leagueRepository.deleteLeague(league.id, players);
+		if (isDeleteSuccess) {
+			return true;
+		}
+		throw new HttpError(this.serverErrorCode, ApiResponseMessage.DATABASE_ERROR);
 	}
 
 	private stepWeekTracker(weekTracker: WeekTrackerDocument): WeekTrackerDocument {
