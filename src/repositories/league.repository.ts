@@ -28,14 +28,14 @@ export class LeagueRepositoryService {
   public async changeUserData(user: UserDocument, leagues: LeagueDocument[]): Promise<UserDocument | null> {
     const transaction = new Transaction(true);
     transaction.insert(DocumentName.USER, user);
-  
+
     if (leagues && leagues.length) {
       leagues.forEach(league => {
         league.markModified('players');
         transaction.update(DocumentName.LEAGUE, league._id, league, { new: true });
       })
     }
-  
+
     try {
       await transaction.run();
       return user;
@@ -82,8 +82,7 @@ export class LeagueRepositoryService {
 
   public async getLeagueById(id: string): Promise<LeagueDocument> {
     try {
-      const league = await LeagueModel.findById(id).exec();
-      return league ? league : null;
+      return await LeagueModel.findById(id).exec();
     } catch(err) {
       console.error(err);
       return null;
@@ -118,6 +117,20 @@ export class LeagueRepositoryService {
       console.error(err);
       transaction.rollback();
       return null;
+    }
+  }
+
+  public async deleteLeague(leagueId: string): Promise<boolean> {
+    const transaction = new Transaction(true);
+    transaction.remove(DocumentName.LEAGUE, leagueId);
+
+    try {
+      await transaction.run();
+      return true;
+    } catch (err)  {
+      console.error(err);
+      transaction.rollback();
+      return false;
     }
   }
 
