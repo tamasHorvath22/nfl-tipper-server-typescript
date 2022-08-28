@@ -37,7 +37,7 @@ export class LeagueController {
   public async acceptInvitation(
     @HeaderParam('authorization') authorization: string,
     @Body() body: { leagueId: string }
-  ): Promise<{ token: string } | ApiResponseMessage> {
+  ): Promise<boolean> {
     return await this.leagueService.acceptInvitation(Utils.getUserFromToken(authorization), body.leagueId);
   }
 

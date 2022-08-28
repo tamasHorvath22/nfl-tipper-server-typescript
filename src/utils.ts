@@ -19,7 +19,6 @@ export class Utils {
 			username: user.username,
 			email: user.email,
 			avatarUrl: user.avatarUrl,
-			isEmailConfirmed: user.isEmailConfirmed,
 			isAdmin: user.isAdmin,
 			leagues: user.leagues.map(league => league.leagueId),
 			invitations: user.invitations

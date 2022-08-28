@@ -72,7 +72,7 @@ export class LeagueService {
 			return ApiResponseMessage.NO_INVITATION_RIGHT;
 		}
 
-		const invitedUser = await this.userRepositoryService.getByEmail(inviteData.invitedEmail);
+		const invitedUser = await this.userRepositoryService.getByEmail(inviteData.email);
 		if (!invitedUser) {
 			return ApiResponseMessage.NO_EMAIL_FOUND;
 		}
@@ -96,20 +96,16 @@ export class LeagueService {
 		return isSaveSuccess ? ApiResponseMessage.INVITATION_SUCCESS : ApiResponseMessage.INVITATION_FAIL;
 	}
 
-	public async acceptInvitation(tokenUser: UserDTO, leagueId: string): Promise<{ token: string } | ApiResponseMessage> {
+	public async acceptInvitation(tokenUser: UserDTO, leagueId: string): Promise<boolean> {
 		const league = await this.leagueRepository.getLeagueById(leagueId);
-		if (!league) {
-			return ApiResponseMessage.DATABASE_ERROR;
-		}
-
 		const user = await this.userRepositoryService.getUserById(tokenUser.id);
-		if (!user) {
-			return ApiResponseMessage.DATABASE_ERROR;
+		if (!league || ! user) {
+			throw new HttpError(this.serverErrorCode, ApiResponseMessage.DATABASE_ERROR);
 		}
 
 		const userId = user._id.toString();
 		if (!league.invitations.includes(userId)) {
-			return ApiResponseMessage.DATABASE_ERROR;
+			throw new HttpError(this.serverErrorCode, ApiResponseMessage.DATABASE_ERROR);
 		}
 
 		// remove invitation from user
@@ -139,7 +135,10 @@ export class LeagueService {
 		}
 
 		const isSaveSuccess = await this.leagueRepository.saveLeagueAndUser(user, league);
-		return isSaveSuccess ? Utils.signToken(user) : ApiResponseMessage.DATABASE_ERROR;
+		if (!isSaveSuccess) {
+			throw new HttpError(this.serverErrorCode, ApiResponseMessage.DATABASE_ERROR);
+		}
+		return true;
 	}
 
 	public async getLeaguesData(tokenUser: UserDTO): Promise<LeagueDataDto[]> {
@@ -392,8 +391,15 @@ export class LeagueService {
 		if (!league || userId !== league.creator) {
 			throw new HttpError(this.serverErrorCode, ApiResponseMessage.DATABASE_ERROR);
 		}
+		const players = await this.userRepositoryService.getUsersByIds(league.players.map(p => p.id))
+		if (!players) {
+			throw new HttpError(this.serverErrorCode, ApiResponseMessage.DATABASE_ERROR);
+		}
+		for (const player of players) {
+			player.leagues = player.leagues.filter(l => l.leagueId !== leagueId);
+		}
 
-		const isDeleteSuccess = await this.leagueRepository.deleteLeague(league.id);
+		const isDeleteSuccess = await this.leagueRepository.deleteLeague(league.id, players);
 		if (isDeleteSuccess) {
 			return true;
 		}

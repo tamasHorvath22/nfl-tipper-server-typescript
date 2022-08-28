@@ -17,8 +17,7 @@ export class LeagueRepositoryService {
     });
     try {
       // @ts-ignore
-      const leagues = await LeagueModel.find({ _id: { $in: mongooseIdArray } });
-      return leagues.length ? leagues : null;
+      return await LeagueModel.find({ _id: { $in: mongooseIdArray } });
     } catch(err) {
       console.error(err);
       return null;
@@ -120,9 +119,12 @@ export class LeagueRepositoryService {
     }
   }
 
-  public async deleteLeague(leagueId: string): Promise<boolean> {
+  public async deleteLeague(leagueId: string, players: UserDocument[]): Promise<boolean> {
     const transaction = new Transaction(true);
     transaction.remove(DocumentName.LEAGUE, leagueId);
+    for (const player of players) {
+      transaction.insert(DocumentName.USER, player);
+    }
 
     try {
       await transaction.run();
