@@ -516,8 +516,11 @@ export class LeagueService {
 		return week.type === WeekType.POSTSEASON && week.week.sequence === 4;
 	}
 
-	private saveBetsForOneLeague(userId: string, league: LeagueDocument, betsDto: BetDto, currentYear: number) {
+	private saveBetsForOneLeague(userId: string, league: LeagueDocument, betsDto: BetDto, currentYear: number): void {
 		const currentSeason = league.seasons.find(season => season.year === currentYear);
+		if (!currentSeason) {
+			return;
+		}
 		const currentWeek = currentSeason.weeks.find(weekToFind => weekToFind.weekId === betsDto.weekId);
 		const currentTime = new Date().getTime();
 
