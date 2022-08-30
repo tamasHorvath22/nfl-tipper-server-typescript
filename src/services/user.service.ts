@@ -54,13 +54,17 @@ export class UserService {
     return Utils.signToken(user);
   }
 
-  public async changeUserData(tokenUser: UserDTO, avatarUrl: string): Promise<ApiResponseMessage | { token: string }> {
+  public async changeUserData(
+    tokenUser: UserDTO,
+    body: { avatarUrl: string, name: string }
+  ): Promise<ApiResponseMessage | { token: string }> {
     const user = await this.userRepositoryService.getUserById(tokenUser.id);
     if (!user) {
       return ApiResponseMessage.NOT_FOUND;
     }
 
-    user.avatarUrl = avatarUrl;
+    user.avatarUrl = body.avatarUrl;
+    user.username = body.name;
     let leagues;
     if (user.leagues.length) {
       leagues = await this.leagueRepositoryService.getLeaguesByIds(user.leagues.map(league => league.leagueId));

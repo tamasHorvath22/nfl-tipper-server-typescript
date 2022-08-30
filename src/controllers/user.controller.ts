@@ -19,9 +19,9 @@ export class UserController {
   @Post('/api/user/change')
   public async changeUserData(
     @HeaderParam('authorization') authorization: string,
-    @Body() body: { avatarUrl: string }
+    @Body() body: { avatarUrl: string, name: string }
   ): Promise<{ token: string } | ApiResponseMessage> {
-    return await this.userService.changeUserData(Utils.getUserFromToken(authorization), body.avatarUrl);
+    return await this.userService.changeUserData(Utils.getUserFromToken(authorization), body);
   }
 
   @Post('/api/user/refresh')
