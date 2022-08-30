@@ -175,7 +175,7 @@ export class LeagueService {
 			currentSeason.finalWinner = { [userId]: currentSeason.finalWinner[userId] };
 		}
 
-		const teamStandings = await this.getTeamStandingsData();
+		const teamStandings = await this.getTeamStandingsData(weekTracker.year);
 		await Utils.waitFor(1500);
 
 		const now = new Date().getTime();
@@ -207,9 +207,9 @@ export class LeagueService {
 		return isSaveSuccess ? ApiResponseMessage.BET_SAVE_SUCCESS : ApiResponseMessage.BET_SAVE_FAIL;
 	}
 
-	public async getTeamStandingsData(): Promise<any> {
+	public async getTeamStandingsData(year: number): Promise<any> {
 		const standings = {};
-		const rawData = await this.dataService.getTeamStandingsData();
+		const rawData = await this.dataService.getTeamStandingsData(year);
 		if (!rawData) {
 			return null;
 		}
@@ -367,7 +367,8 @@ export class LeagueService {
 
 	public async modifyLeague(userId: string, data: ModifyLeagueDto): Promise<LeagueDto> {
 		const league = await this.leagueRepository.getLeagueById(data.leagueId);
-		if (!league || userId !== league.creator) {
+		const weekTracker = await this.weekTrackerRepository.getTracker();
+		if (!league || userId !== league.creator || !weekTracker) {
 			throw new HttpError(this.serverErrorCode, ApiResponseMessage.DATABASE_ERROR);
 		}
 
@@ -377,7 +378,7 @@ export class LeagueService {
 		const saveResponse = await this.leagueRepository.updateLeagues([league]);
 		if (saveResponse) {
 
-			const teamStandings = await this.getTeamStandingsData();
+			const teamStandings = await this.getTeamStandingsData(weekTracker.year);
 			await Utils.waitFor(1500);
 
 			const league = saveResponse.find(league => league.id === data.leagueId);

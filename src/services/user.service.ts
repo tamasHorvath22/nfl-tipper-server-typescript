@@ -7,6 +7,8 @@ import {UserDTO} from '../types/user-dto';
 import {Utils} from '../utils';
 import {GoogleAuthDto} from '../types/google-auth.dto';
 import { HttpError } from 'routing-controllers';
+import * as CryptoJS from 'crypto-js';
+import { ConfigService, EnvKey } from './config.service';
 
 @Service()
 export class UserService {
@@ -19,13 +21,14 @@ export class UserService {
   ) {}
 
   public async googleAuth(googleAuthDto: GoogleAuthDto): Promise<{ token: string }> {
-    const user = await this.userRepositoryService.getByEmail(googleAuthDto.email);
+    const userEmail = this.decrypt(googleAuthDto.email);
+    const user = await this.userRepositoryService.getByEmail(userEmail);
     if (user === undefined) {
       const newGoogleUser = new UserModel({
-        username: googleAuthDto.username,
-        nickname: googleAuthDto.nickname,
+        username: this.decrypt(googleAuthDto.username),
+        nickname: this.decrypt(googleAuthDto.nickname),
         password: `${Math.floor(Math.random() * 9999999)}`,
-        email: googleAuthDto.email,
+        email: userEmail,
         leagues: [],
         invitations: [],
         avatarUrl: null,
@@ -77,5 +80,10 @@ export class UserService {
       return ApiResponseMessage.MODIFY_FAIL;
     }
     return Utils.signToken(result);
+  }
+
+  private decrypt(source: string): string {
+    const bytes = CryptoJS.AES.decrypt(source, ConfigService.getEnvValue(EnvKey.API_PRIVATE_KEY));
+    return bytes.toString() ? bytes.toString(CryptoJS.enc.Utf8) : null;
   }
 }

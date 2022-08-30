@@ -34,7 +34,7 @@ export class UserRepositoryService {
   public async getUserByNickname(nickname: string): Promise<null | UserDocument> {
     try {
       const user = await userModel.findOne({ nickname: nickname }).exec();
-      return user ? user : undefined;
+      return user || undefined;
     } catch(err) {
       console.error(err);
       return null;

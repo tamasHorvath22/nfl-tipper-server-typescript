@@ -4,7 +4,7 @@ import { UserDTO } from './types/user-dto';
 import { LeagueDocument } from './documents/league.document';
 import { LeagueDto } from './types/league.dto';
 import * as jwt from 'jsonwebtoken';
-import { ConfigService } from './services/config.service';
+import { ConfigService, EnvKey } from './services/config.service';
 import { TeamStandingsDto } from './types/team-standings.dto';
 
 export class Utils {
@@ -67,7 +67,7 @@ export class Utils {
 	}
 
 	public static signToken(user: UserDocument): { token: string } {
-		return { token: jwt.sign(Utils.mapToUserDto(user), ConfigService.getEnvValue('JWT_PRIVATE_KEY')) };
+		return { token: jwt.sign(Utils.mapToUserDto(user), ConfigService.getEnvValue(EnvKey.JWT_PRIVATE_KEY)) };
 	}
 
 	public static waitFor(millis: number): Promise<void> {
