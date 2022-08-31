@@ -9,6 +9,7 @@ import {GoogleAuthDto} from '../types/google-auth.dto';
 import { HttpError } from 'routing-controllers';
 import * as CryptoJS from 'crypto-js';
 import { ConfigService, EnvKey } from './config.service';
+import { LeagueDocument } from '../documents/league.document';
 
 @Service()
 export class UserService {
@@ -65,7 +66,7 @@ export class UserService {
 
     user.avatarUrl = body.avatarUrl;
     user.username = body.name;
-    let leagues;
+    let leagues: LeagueDocument[];
     if (user.leagues.length) {
       leagues = await this.leagueRepositoryService.getLeaguesByIds(user.leagues.map(league => league.leagueId));
       if (!leagues) {
@@ -77,6 +78,7 @@ export class UserService {
           continue;
         }
         player.avatar = user.avatarUrl;
+        player.name = user.username;
       }
     }
     const result = await this.leagueRepositoryService.changeUserData(user, leagues);
