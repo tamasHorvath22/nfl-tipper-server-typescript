@@ -3,6 +3,7 @@ export enum ApiResponseMessage {
   USER_MISSING_TOKEN = 'MISSING_TOKEN',
   DATABASE_ERROR = 'Database Error',
   NOT_FOUND = 'NOT_FOUND',
+  MISSING_USERNAME = 'Username is missing',
   ERROR = 'ERROR',
   LEAGUES_NOT_FOUND = 'LEAGUES_NOT_FOUND',
   MODIFY_FAIL = 'MODIFY_FAIL',

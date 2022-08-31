@@ -20,7 +20,7 @@ export class UserController {
   public async changeUserData(
     @HeaderParam('authorization') authorization: string,
     @Body() body: { avatarUrl: string, name: string }
-  ): Promise<{ token: string } | ApiResponseMessage> {
+  ): Promise<{ token: string }> {
     return await this.userService.changeUserData(Utils.getUserFromToken(authorization), body);
   }
 

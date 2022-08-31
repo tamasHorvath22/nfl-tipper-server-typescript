@@ -55,13 +55,13 @@ export class UserService {
     return Utils.signToken(user);
   }
 
-  public async changeUserData(
-    tokenUser: UserDTO,
-    body: { avatarUrl: string, name: string }
-  ): Promise<ApiResponseMessage | { token: string }> {
+  public async changeUserData(tokenUser: UserDTO, body: { avatarUrl: string, name: string }): Promise<{ token: string }> {
+    if (!body.name) {
+      throw new HttpError(this.serverErrorCode, ApiResponseMessage.MISSING_USERNAME);
+    }
     const user = await this.userRepositoryService.getUserById(tokenUser.id);
     if (!user) {
-      return ApiResponseMessage.NOT_FOUND;
+      throw new HttpError(this.serverErrorCode, ApiResponseMessage.NOT_FOUND);
     }
 
     user.avatarUrl = body.avatarUrl;
@@ -70,7 +70,7 @@ export class UserService {
     if (user.leagues.length) {
       leagues = await this.leagueRepositoryService.getLeaguesByIds(user.leagues.map(league => league.leagueId));
       if (!leagues) {
-        return ApiResponseMessage.LEAGUES_NOT_FOUND;
+        throw new HttpError(this.serverErrorCode, ApiResponseMessage.LEAGUES_NOT_FOUND);
       }
       for (const league of leagues) {
         const player = league.players.find(player => player.id.toString() === user._id.toString());
@@ -83,7 +83,7 @@ export class UserService {
     }
     const result = await this.leagueRepositoryService.changeUserData(user, leagues);
     if (!result) {
-      return ApiResponseMessage.MODIFY_FAIL;
+      throw new HttpError(this.serverErrorCode, ApiResponseMessage.MODIFY_FAIL);
     }
     return Utils.signToken(result);
   }
