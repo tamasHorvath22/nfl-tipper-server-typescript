@@ -1,11 +1,11 @@
-import {LeagueRepositoryService} from '../repositories/league.repository';
-import {UserRepositoryService} from '../repositories/user.repository';
-import {Service} from 'typedi';
-import {ApiResponseMessage} from '../constants/api-response-message';
+import { LeagueRepositoryService } from '../repositories/league.repository';
+import { UserRepositoryService } from '../repositories/user.repository';
+import { Service } from 'typedi';
+import { ApiResponseMessage } from '../constants/api-response-message';
 import UserModel from '../mongoose-models/user.model';
-import {UserDTO} from '../types/user-dto';
-import {Utils} from '../utils';
-import {GoogleAuthDto} from '../types/google-auth.dto';
+import { UserDTO } from '../types/user-dto';
+import { Utils } from '../utils';
+import { GoogleAuthDto } from '../types/google-auth.dto';
 import { HttpError } from 'routing-controllers';
 import * as CryptoJS from 'crypto-js';
 import { ConfigService, EnvKey } from './config.service';
@@ -23,7 +23,11 @@ export class UserService {
 
   public async googleAuth(googleAuthDto: GoogleAuthDto): Promise<{ token: string }> {
     const userEmail = this.decrypt(googleAuthDto.email);
-    const user = await this.userRepositoryService.getByEmail(userEmail);
+    let user = await this.userRepositoryService.getByEmail(userEmail);
+    if (user === null) {
+      throw new HttpError(this.serverErrorCode, ApiResponseMessage.DATABASE_ERROR);
+    }
+
     if (user === undefined) {
       const newGoogleUser = new UserModel({
         username: this.decrypt(googleAuthDto.username),
@@ -37,12 +41,10 @@ export class UserService {
         isAdmin: false
       });
 
-      const savedUser = await this.userRepositoryService.saveGoogleUser(newGoogleUser);
-      if (savedUser) {
-        return Utils.signToken(savedUser);
+      user = await this.userRepositoryService.saveGoogleUser(newGoogleUser);
+      if (!user) {
+        throw new HttpError(this.serverErrorCode, ApiResponseMessage.USER_CREATE_ERROR);
       }
-    } else if (user === null) {
-      // TODO error handling
     }
     return Utils.signToken(user);
   }

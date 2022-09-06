@@ -14,8 +14,9 @@ export class UserRepositoryService {
 
     try {
       const result = await transaction.run();
-      return result ? result[0] : null;
+      return result && result.length ? result[0] : null;
     } catch (err)  {
+      console.error(err)
       transaction.rollback();
       return null;
     }
@@ -44,7 +45,7 @@ export class UserRepositoryService {
   public async getByEmail(email: string): Promise<null | UserDocument> {
     try {
       const user = await userModel.findOne({ email: email }).exec();
-      return user ? user : null;
+      return user ? user : undefined;
     } catch(err) {
       console.error(err);
       return null;

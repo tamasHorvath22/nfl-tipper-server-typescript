@@ -1,5 +1,6 @@
 export enum ApiResponseMessage {
   USER_TOKEN_ERROR = 'TOKEN_ERROR',
+  USER_CREATE_ERROR = 'User create error',
   USER_MISSING_TOKEN = 'MISSING_TOKEN',
   DATABASE_ERROR = 'Database Error',
   NOT_FOUND = 'NOT_FOUND',
