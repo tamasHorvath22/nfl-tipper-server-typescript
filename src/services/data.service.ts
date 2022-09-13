@@ -27,7 +27,7 @@ export class DataService {
 	}
 
 	public async getTeamStandingsData(year: number): Promise<any> {
-		const standingUrl = `/seasons/${year}/REG/standings/season.json?api_key='`;
+		const standingUrl = `/seasons/${year}/REG/standings/season.json?api_key=`;
 		const path = `${this.baseUrl}${this.v6}${standingUrl}${ConfigService.getEnvValue(EnvKey.SPORTRADAR_KEY)}`;
 
 		try {
