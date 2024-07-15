@@ -8,7 +8,7 @@ export class DataService {
 
 	private baseUrl = 'https://api.sportradar.us/nfl/official/trial';
 	private v5 = '/v5/en';
-	private v6 = '/v6/en'
+	private v6 = '/v6/en';
 
 	public async getWeekData(weekTracker: WeekTrackerDocument) {
 		const gamesUrl = '/games/';
