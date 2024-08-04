@@ -25,6 +25,8 @@ import { BetType } from '../constants/bet-types';
 import { GameOutcome } from '../constants/game-outcome';
 import { ModifyLeagueDto } from '../types/modify-league.dto';
 import { HttpError } from 'routing-controllers';
+import { LeagueBackupRepositoryService } from '../repositories/league-backup.repository';
+import LeagueBackupModel from '../mongoose-models/league-backup.model';
 
 @Service()
 export class LeagueService {
@@ -35,7 +37,8 @@ export class LeagueService {
 		private userRepositoryService: UserRepositoryService,
 		private weekTrackerRepository: WeekTrackerRepository,
 		private leagueRepository: LeagueRepositoryService,
-		private dataService: DataService
+		private dataService: DataService,
+		private leagueBackupRepository: LeagueBackupRepositoryService,
 	) {}
 
 	public async createLeague(
@@ -56,9 +59,12 @@ export class LeagueService {
 			};
 			const result = await this.weekTrackerRepository.saveTracker(wt as WeekTrackerDocument);
 			weekTracker = result && result[0] ? result[0] : null;
-
 		}
 
+		const backup = await this.leagueBackupRepository.getLeagueBackup();
+		if (!backup) {
+			await this.leagueBackupRepository.updateBackup(new LeagueBackupModel({ backups: { leagueId: null } }));
+		}
 
 		if (!user || !weekTracker) {
 			throw new HttpError(this.serverErrorCode, ApiResponseMessage.DATABASE_ERROR);
@@ -213,6 +219,18 @@ export class LeagueService {
 		if (!leagues || !weekTracker) {
 			return ApiResponseMessage.DATABASE_ERROR;
 		}
+
+		const backup = await this.leagueBackupRepository.getLeagueBackup();
+		if (backup) {
+			for (const league of leagues) {
+				backup.backups[league.id] = {
+					league: league,
+					backupDate: new Date()
+				}
+			}
+		}
+		await this.leagueBackupRepository.updateBackup(backup);
+
 		for (const league of leagues) {
 			this.saveBetsForOneLeague(tokenUser.id, league, betDto, weekTracker.year);
 		}
