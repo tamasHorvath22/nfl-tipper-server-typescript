@@ -3,7 +3,7 @@ export enum EnvKey {
   JWT_PRIVATE_KEY = 'JWT_PRIVATE_KEY',
   DB_USERNAME = 'DB_USERNAME',
   DB_PASS = 'DB_PASS',
-  APP_NAME = 'APP_NAME',
+  DB_NAME = 'DB_NAME',
   SPORTRADAR_KEY = 'SPORTRADAR_KEY',
   API_PRIVATE_KEY = 'API_PRIVATE_KEY',
   CLUSTER = 'CLUSTER'
@@ -13,7 +13,7 @@ export interface EnvModel {
   [EnvKey.PORT]: string;
   [EnvKey.DB_USERNAME]: string;
   [EnvKey.DB_PASS]: string;
-  [EnvKey.APP_NAME]: string;
+  [EnvKey.DB_NAME]: string;
   [EnvKey.SPORTRADAR_KEY]: string;
   [EnvKey.JWT_PRIVATE_KEY]: string;
   [EnvKey.API_PRIVATE_KEY]: string;
@@ -31,9 +31,9 @@ export class ConfigService {
   public static getDbConnectionString(): string {
     const username = ConfigService.getEnvValue(EnvKey.DB_USERNAME);
     const pass = ConfigService.getEnvValue(EnvKey.DB_PASS);
-    const appName = ConfigService.getEnvValue(EnvKey.APP_NAME);
+    const dbName = ConfigService.getEnvValue(EnvKey.DB_NAME);
     const cluster = ConfigService.getEnvValue(EnvKey.CLUSTER);
-    return `mongodb+srv://${username}:${pass}@${cluster}/?retryWrites=true&w=majority&appName=${appName}`;
+    return `mongodb+srv://${username}:${pass}@${cluster}/?retryWrites=true&w=majority&dbName=${dbName}`;
   }
 
 }

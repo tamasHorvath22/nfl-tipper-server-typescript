@@ -46,7 +46,20 @@ export class LeagueService {
 			throw new HttpError(this.serverErrorCode, ApiResponseMessage.DATABASE_ERROR);
 		}
 		const user = await this.userRepositoryService.getUserById(tokenUser.id);
-		const weekTracker = await this.weekTrackerRepository.getTracker();
+		let weekTracker = await this.weekTrackerRepository.getTracker();
+		// TODO create some logic
+		if (!weekTracker) {
+			const wt = {
+				year: 2024,
+				week: 1,
+				regOrPst: WeekType.REGULAR
+			};
+			const result = await this.weekTrackerRepository.saveTracker(wt as WeekTrackerDocument);
+			weekTracker = result && result[0] ? result[0] : null;
+
+		}
+
+
 		if (!user || !weekTracker) {
 			throw new HttpError(this.serverErrorCode, ApiResponseMessage.DATABASE_ERROR);
 		}

@@ -1,6 +1,8 @@
 import { Service } from "typedi";
 import { WeekTrackerDocument } from "../documents/week-tracker.document";
 import WeekTrackerModel from '../mongoose-models/week-tracker.model';
+import Transaction from 'mongoose-transactions-typescript';
+import { DocumentName } from '../constants/document-names';
 
 @Service()
 export class WeekTrackerRepository {
@@ -14,6 +16,19 @@ export class WeekTrackerRepository {
 			return null;
 		} catch (err) {
 			console.error(err);
+			return null;
+		}
+	}
+
+	public async saveTracker(weekTracker: WeekTrackerDocument): Promise<WeekTrackerDocument> {
+		const transaction = new Transaction(true);
+		transaction.insert(DocumentName.WEEK_TRACKER, weekTracker);
+
+		try {
+			return await transaction.run();
+		} catch (err)  {
+			console.error(err);
+			transaction.rollback();
 			return null;
 		}
 	}
