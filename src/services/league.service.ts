@@ -228,8 +228,8 @@ export class LeagueService {
 					backupDate: new Date()
 				}
 			}
+			await this.leagueBackupRepository.updateBackup(backup);
 		}
-		await this.leagueBackupRepository.updateBackup(backup);
 
 		for (const league of leagues) {
 			this.saveBetsForOneLeague(tokenUser.id, league, betDto, weekTracker.year);
