@@ -11,6 +11,7 @@ import { GameDocument, LeagueDocument, SeasonDocument } from '../documents/leagu
 import { DataService } from './data.service';
 import { WeekTrackerDocument } from '../documents/week-tracker.document';
 import WeekModel from '../mongoose-models/week.model';
+import WeekTrackerModel from '../mongoose-models/week-tracker.model';
 import GameModel from '../mongoose-models/game.model';
 import { WeekType } from '../constants/week-type';
 import { GameStatus } from '../constants/game-status';
@@ -52,12 +53,12 @@ export class LeagueService {
 		let weekTracker = await this.weekTrackerRepository.getTracker();
 		// TODO create some logic
 		if (!weekTracker) {
-			const wt = {
+			const newWeekTracker = new WeekTrackerModel({
 				year: 2024,
 				week: 1,
 				regOrPst: WeekType.REGULAR
-			};
-			const result = await this.weekTrackerRepository.saveTracker(wt as WeekTrackerDocument);
+			})
+			const result = await this.weekTrackerRepository.saveTracker(newWeekTracker);
 			weekTracker = result && result[0] ? result[0] : null;
 		}
 
